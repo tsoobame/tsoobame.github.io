@@ -128,3 +128,38 @@ footer div {
     border-bottom: 1px solid white;
     border-top: 1px solid white;
 }
+
+
+.tag {
+    background-color: rgb(0, 119, 151);
+    color: white;
+}
+
+.post-content h1 {
+    font-size: 1.75rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.post-content p {
+    margin-bottom: 1rem;
+    line-height: 1.75;
+}
+
+.post-content ul {
+    list-style-type: disc;
+    padding-left: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.post-content pre {
+    background: #f3f4f6;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    border: 2px solid #ddd;
+    box-shadow: #eee 0px 0px 10px;
+    font-family: monospace;
+}

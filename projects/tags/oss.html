@@ -2,27 +2,16 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/litera/bootstrap.min.css"
-      rel="stylesheet"
-    />
     <link href="/static/styles.css" rel="stylesheet" />
-
-    <style>
-      pre {
-        border: 2px solid #ddd;
-        border-radius: 12px;
-        box-shadow: #eee 0px 0px 10px;
-        padding: 18px;
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
     <title></title>
   </head>
   <body>
     <header>
       <div>
         <h2>
-          <a color="inherit" href="/">tsoobame</a>
+          
+          <a color="inherit" href="/blog">tsoobame</a>
         </h2>
         <div class="navbar-links">
           
@@ -47,54 +36,52 @@
       </div>
     </header>
 
-    <div class="container mt-3 pt-1"><div class="row row-cols-1 row-cols-md-3 g-4">
-  
-  <div class="col">
-    <div class="card">
-      <img
-      src="https://res.cloudinary.com/ddkok43g3/image/upload/w_600,f_auto,q_auto/v1747320153/gengo.jpg" class="card-img-top object-fit-cover"
-      alt="Gengo" style="height: 140px; object-fit: cover" />
+    <div class="container mx-auto px-4 pt-8">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+   
 
-      <div class="card-body">
-        <small class="text-muted d-block mb-2">
-          <a
-            href="https://unsplash.com/@bank_phrom?utm_content=creditCopyText&amp;utm_medium=referral&amp;utm_source=unsplash"
-            target="_blank"
-            rel="noreferrer"
-            class="text-muted text-decoration-none"
-          >
-            Photo by Bank Phrom
-          </a>
-        </small>
-
-        <h5 class="card-title mb-0">
-          <a href="/projects/gengo.html">Gengo</a>
-        </h5>
-        <p class="text-muted mb-2">2025-05-13</p>
-
-        <p class="card-text">This static site generator</p>
-
-        <div class="mb-3">
-          
-          <a
-            href="/projects/tags/golang.html"
-            class="badge bg-light text-dark border me-1"
-            >golang</a
-          >
-          
-          <a
-            href="/projects/tags/oss.html"
-            class="badge bg-light text-dark border me-1"
-            >oss</a
-          >
-          
-          <a
-            href="/projects/tags/cli.html"
-            class="badge bg-light text-dark border me-1"
-            >cli</a
-          >
-          
-        </div>
+  <div
+    class="md:col-span-2  bg-white rounded-lg shadow overflow-hidden hover:scale-105 transition"
+  >
+    <img
+    src="https://res.cloudinary.com/ddkok43g3/image/upload/w_600,f_auto,q_auto/v1747320153/gengo.jpg" alt="Gengo" class="w-full
+    h-48 object-cover">
+    
+    <small class="text-gray-500 text-xs pl-2 inline-block">
+      Photo by
+      <a
+        href="https://unsplash.com/@bank_phrom?utm_content=creditCopyText&amp;utm_medium=referral&amp;utm_source=unsplash"
+        class="underline hover:text-[rgb(0,119,151)]"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        "Bank Phrom"
+      </a>
+    </small>
+    <div class="p-4">
+      <h2 class="text-xl font-semibold mb-2">
+        <a href="/projects/gengo.html">Gengo</a>
+      </h2>
+      <p
+        class="text-gray-600 mb-2 text-base"
+      >
+        This static site generator
+      </p>
+      <div class="text-sm text-gray-400 mb-1">2025-05-13</div>
+      <div class="flex flex-wrap gap-1">
+        
+        <span class="tag text-xs font-medium px-2 py-1 rounded"
+          ><a href="/projects/tags/golang.html">golang</a></span
+        >
+        
+        <span class="tag text-xs font-medium px-2 py-1 rounded"
+          ><a href="/projects/tags/oss.html">oss</a></span
+        >
+        
+        <span class="tag text-xs font-medium px-2 py-1 rounded"
+          ><a href="/projects/tags/cli.html">cli</a></span
+        >
+        
       </div>
     </div>
   </div>

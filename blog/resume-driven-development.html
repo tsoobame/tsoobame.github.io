@@ -2,27 +2,16 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/litera/bootstrap.min.css"
-      rel="stylesheet"
-    />
     <link href="/static/styles.css" rel="stylesheet" />
-
-    <style>
-      pre {
-        border: 2px solid #ddd;
-        border-radius: 12px;
-        box-shadow: #eee 0px 0px 10px;
-        padding: 18px;
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
     <title></title>
   </head>
   <body>
     <header>
       <div>
         <h2>
-          <a color="inherit" href="/">tsoobame</a>
+          
+          <a color="inherit" href="/blog">tsoobame</a>
         </h2>
         <div class="navbar-links">
           
@@ -47,51 +36,65 @@
       </div>
     </header>
 
-    <div class="container mt-3 pt-1"><div class="row">
-  <div class="text-end mb-4">
+    <div class="container mx-auto px-4 pt-8"><div class="mb-8">
+  
+  <div class="mb-4 text-end">
     <img
-    src="https://res.cloudinary.com/ddkok43g3/image/upload/w_auto,h_400,c_fill,g_auto,q_auto,f_auto/v1747320153/resume-driven-development.jpg" style="width: 100%; height: 400px; object-fit:
-    cover" alt="" />
-    <div>
+      src="https://res.cloudinary.com/ddkok43g3/image/upload/w_auto,h_400,c_fill,g_auto,q_auto,f_auto/v1747320153/resume-driven-development.jpg"
+      alt=""
+      class="w-full h-[400px] object-cover rounded"
+    />
+
+    
+    <div class="mt-2">
       
-      <a
-        href="tags/software.html"
-        class="badge bg-light text-dark border me-1"
-        >software</a
-      >
-      
-      <a
-        href="tags/design.html"
-        class="badge bg-light text-dark border me-1"
-        >design</a
-      >
-      
-      <a
-        href="tags/project.html"
-        class="badge bg-light text-dark border me-1"
-        >project</a
-      >
-      
-      <a
-        href="tags/boring.html"
-        class="badge bg-light text-dark border me-1"
-        >boring</a
-      >
-      
-      <small class="text-muted mt-2">
-        Photo by
         <a
-          href="https://unsplash.com/@churchoftodd?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText"
-          class="text-decoration-none"
-          target="_blank"
-          rel="noopener noreferrer"
-          >"Todd Kent</a
+          href="tags/software.html"
+          class="inline-block bg-[rgb(0,119,151)] text-white text-xs font-medium px-2 py-1 rounded me-1"
         >
-      </small>
+          software
+        </a>
+      
+        <a
+          href="tags/design.html"
+          class="inline-block bg-[rgb(0,119,151)] text-white text-xs font-medium px-2 py-1 rounded me-1"
+        >
+          design
+        </a>
+      
+        <a
+          href="tags/project.html"
+          class="inline-block bg-[rgb(0,119,151)] text-white text-xs font-medium px-2 py-1 rounded me-1"
+        >
+          project
+        </a>
+      
+        <a
+          href="tags/boring.html"
+          class="inline-block bg-[rgb(0,119,151)] text-white text-xs font-medium px-2 py-1 rounded me-1"
+        >
+          boring
+        </a>
+      
     </div>
+
+    
+    <small class="text-gray-500 text-sm mt-2 inline-block">
+      Photo by
+      <a
+        href="https://unsplash.com/@churchoftodd?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText"
+        class="underline hover:text-[rgb(0,119,151)]"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        "Todd Kent"
+      </a>
+    </small>
   </div>
-  <div class="row">
-    <article><h1 id="resume-driven-development">Resume Driven Development</h1>
+
+  
+  <article class="post-content">
+    <h1 id="resume-driven-development">Resume Driven Development</h1>
 <p>As software engineers we want to utilize the most effective tools, patterns and methodologies to fulfill our clients needs.</p>
 <p>A common mantra in our industry is <code>&quot;Use the right tool for the job&quot;</code>.  This idea gained momentum with the microservices hype, leading to a surge in polyglot programming, persistence, and more. This diversification has seen companies adopting a myriad of programming languages, persistence layers, frameworks, and tools in pursuit of the perfect solution, often overlooking the adequacy of existing tools within their stack.</p>
 <p>A few years ago, I also fell into the trap of microservices and technology proliferation. Fortunately, the small size of our team and our codebase made the damage reversible and manageable.</p>
@@ -163,8 +166,8 @@ Some of the team members know well RabbitMQ and/or Kafka.</p>
 <p>These examples, while simplified, illustrate the essence of deliberate technology selection. We're naturally drawn to the latest innovations, eager to explore their potential and how they might enhance our projects. But it's crucial to choose mindfully.</p>
 <p>Adding a new technology to our stack should come after thoughtful consideration. Even if a tool is perfect for the job, the price of adding it to our stack might outweigh the benefits it brings.</p>
 <p><a href="https://github.com/tonitienda/kadai">Personal projects</a> offer the perfect playground for experimentation, allowing us to satisfy our appetite for learning without risking the integrity of our professional endeavors. By reserving our exploratory impulses for these spaces, we can approach our work projects with a more focused and pragmatic mindset. What we learn in those personal projects can be applied to our work projects, but only after a thorough evaluation of the potential benefits and drawbacks.</p>
-</article>
-  </div>
+
+  </article>
 </div>
 </div>
 

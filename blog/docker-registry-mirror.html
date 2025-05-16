@@ -2,27 +2,16 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/litera/bootstrap.min.css"
-      rel="stylesheet"
-    />
     <link href="/static/styles.css" rel="stylesheet" />
-
-    <style>
-      pre {
-        border: 2px solid #ddd;
-        border-radius: 12px;
-        box-shadow: #eee 0px 0px 10px;
-        padding: 18px;
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
     <title></title>
   </head>
   <body>
     <header>
       <div>
         <h2>
-          <a color="inherit" href="/">tsoobame</a>
+          
+          <a color="inherit" href="/blog">tsoobame</a>
         </h2>
         <div class="navbar-links">
           
@@ -47,45 +36,58 @@
       </div>
     </header>
 
-    <div class="container mt-3 pt-1"><div class="row">
-  <div class="text-end mb-4">
+    <div class="container mx-auto px-4 pt-8"><div class="mb-8">
+  
+  <div class="mb-4 text-end">
     <img
-    src="https://res.cloudinary.com/ddkok43g3/image/upload/w_auto,h_400,c_fill,g_auto,q_auto,f_auto/v1747320153/docker-registry-mirror.jpg" style="width: 100%; height: 400px; object-fit:
-    cover" alt="" />
-    <div>
+      src="https://res.cloudinary.com/ddkok43g3/image/upload/w_auto,h_400,c_fill,g_auto,q_auto,f_auto/v1747320153/docker-registry-mirror.jpg"
+      alt=""
+      class="w-full h-[400px] object-cover rounded"
+    />
+
+    
+    <div class="mt-2">
       
-      <a
-        href="tags/docker.html"
-        class="badge bg-light text-dark border me-1"
-        >docker</a
-      >
-      
-      <a
-        href="tags/development.html"
-        class="badge bg-light text-dark border me-1"
-        >development</a
-      >
-      
-      <a
-        href="tags/tools.html"
-        class="badge bg-light text-dark border me-1"
-        >tools</a
-      >
-      
-      <small class="text-muted mt-2">
-        Photo by
         <a
-          href="https://unsplash.com/@guibolduc?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText"
-          class="text-decoration-none"
-          target="_blank"
-          rel="noopener noreferrer"
-          >"Guillaume Bolduc</a
+          href="tags/docker.html"
+          class="inline-block bg-[rgb(0,119,151)] text-white text-xs font-medium px-2 py-1 rounded me-1"
         >
-      </small>
+          docker
+        </a>
+      
+        <a
+          href="tags/development.html"
+          class="inline-block bg-[rgb(0,119,151)] text-white text-xs font-medium px-2 py-1 rounded me-1"
+        >
+          development
+        </a>
+      
+        <a
+          href="tags/tools.html"
+          class="inline-block bg-[rgb(0,119,151)] text-white text-xs font-medium px-2 py-1 rounded me-1"
+        >
+          tools
+        </a>
+      
     </div>
+
+    
+    <small class="text-gray-500 text-sm mt-2 inline-block">
+      Photo by
+      <a
+        href="https://unsplash.com/@guibolduc?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText"
+        class="underline hover:text-[rgb(0,119,151)]"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        "Guillaume Bolduc"
+      </a>
+    </small>
   </div>
-  <div class="row">
-    <article><h1 id="docker-registry-local-mirror">Docker Registry Local Mirror</h1>
+
+  
+  <article class="post-content">
+    <h1 id="docker-registry-local-mirror">Docker Registry Local Mirror</h1>
 <h2 id="why-i-needed-it">Why I needed it</h2>
 <p>I recently started working on some personal projects to do and learn things that I had in my TODO list for a very long time.<br />
 One the moments when I work on it is during my (long) commuting times when I go to the office or somewhere else by train.<br />
@@ -152,8 +154,8 @@ end
 <h2 id="how-can-you-use-it">How can you use it</h2>
 <p>The code and the explanation on how to use it can be found in the <a href="https://github.com/tonitienda/docker-registry-mirror">docker-registry-mirror repository</a>.</p>
 <p>Happy (and low data usage) programming!</p>
-</article>
-  </div>
+
+  </article>
 </div>
 </div>
 
