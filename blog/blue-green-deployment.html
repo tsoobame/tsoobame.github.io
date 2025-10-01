@@ -112,23 +112,23 @@
   <article class="post-content">
     <h1 id="blue-green-deployment">Blue green deployment</h1>
 <h2 id="motivation">Motivation</h2>
-<p>I follow <a href="https://x.com/levelsio?lang=en">Pieter Levels</a> and he uses (and inspires others to use) a simple tech stack and process.<br />
-At the time of this post he uses:</p>
+<p>I follow <a href="https://x.com/levelsio?lang=en">Pieter Levels</a> and he uses (and inspires others to use) a simple tech stack and process. And codes directly on the production VPS. That saves him tons of money (no cloud, k8s, etc) and makes fixing bugs in production very simple.</p>
+<p>At the time of this post <a href="https://ramen.tools/@levelsio">the tools he uses are</a>:</p>
 <ul>
-<li>PHP and JQuery for the programming language</li>
+<li>PHP and JS (with JQuery) as programming language</li>
 <li>A VPS in vendors like Linode or Hetzner</li>
 <li>SQLite</li>
+<li>Cloudflare for cdn and content caching</li>
 </ul>
-<p>And codes directly on the production VPS. That saves him tons of money (no cloud, k8s, etc) and makes fixing bugs in production<br />
-very simple.</p>
-<p>That works well for an indie dev and with interpreted languages. For compiled languages things get a bit trickier:</p>
+<p>That works well for an indie dev and with interpreted languages.<br />
+For compiled languages, thought, things get a bit trickier:</p>
 <ul>
 <li>You need to compile the app
 <ul>
 <li>You do not want to use resources of the production VPS to do so</li>
 </ul>
 </li>
-<li>You need to stop one version and start the next creating some downtime</li>
+<li>In order to deploy a new version you need to stop the previous one</li>
 </ul>
 <p>That got me thinking about how I could (hypothetically) use this lean approach for Go.<br />
 For that reason I created this post. It tries to adapt <a href="https://x.com/levelsio?lang=en">levelsio</a>'s way of working to a compiled server like Go.</p>
@@ -138,7 +138,7 @@ I am not responsible for any issues caused in production systems due to followin
 <p>In this post we will create a simple blue-green deployment for our Go app.</p>
 <p><strong>Block 1: Configure the VM with nginx and the simple golang server</strong></p>
 <ul>
-<li>Create a simple Go server with health endpoint</li>
+<li>Create a simple Go server with a health endpoint</li>
 <li>Create a local VM with multipass</li>
 <li>Install nginx in the VM</li>
 <li>Deploy the Go server to the VM</li>
@@ -151,6 +151,7 @@ I am not responsible for any issues caused in production systems due to followin
 <li>Test the complete blue-green deployment process</li>
 </ul>
 <p>I assume knowledge of Go and HTTP servers and basic knowledge about nginx (at least that it exists and what it does).</p>
+<p>Let's start!</p>
 <h2 id="block-1-configure-the-vm-with-nginx-and-the-simple-golang-server">Block 1: Configure the VM with nginx and the simple golang server</h2>
 <div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(w:800,h:300)
 
@@ -164,21 +165,21 @@ browser.e --&gt; nginx.w
 nginx.e --&gt; app.w
 
 @browser(x:50,y:25,w:250,h:200)
-@home(url: &quot;http://multipass/home&quot;, bg: &quot;#e6f3ff&quot;, fg: &quot;#333&quot;, text: &quot;Home Page&quot;)
+@home(url: &quot;http://multipass/home&quot;, bg: &quot;#e6f3ff&quot;, fg: &quot;#666&quot;, text: &quot;Home Page&quot;)
 
 @vps(x:350,y:&amp;browser.c,w:400,h:200)
 @ubuntu(title: &quot;ubuntu@multipass&quot;, bg: &quot;#666&quot;, fg: &quot;#eee&quot;, text: &quot;Ubuntu&quot;, contentBg: &quot;#f0f8ff&quot;)
 
 @nginx(x:20,y:&amp;browser.c,w:150,h:40, title: &quot;nginx&quot;, icon: &quot;nginx&quot;, port: 80, bg: &quot;#f0f8ff&quot;, fg: &quot;#333&quot;)
 @app(x:200,y:&amp;browser.c,w:150,h:40, title: &quot;app&quot;, icon: &quot;golang&quot;, port: 8081, bg: &quot;#f0f8ff&quot;, fg: &quot;#333&quot;)
-</code></pre><h3 id="simple-go-server">Simple Go server</h3>
-<p>Let's first initialize our Go project:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>go mod init bluegreen-demo
-</span></span></code></pre><p>The official way to initialize a Go module is using a git repo, but for our use case we are using this simple name.<br />
+</code></pre><h3 id="creating-our-simple-go-server">Creating our simple Go server</h3>
+<p>Let's first initialize our Go project with <code>go mod init bluegreen-demo</code></p>
+<p>The official way to initialize a Go module is using a git repo, but for our use case we are using this simple name.<br />
 Let's create our server:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>mkdir -p cmd
-</span></span><span style="display:flex;"><span>touch cmd/main.go
-</span></span></code></pre><p>The server will look like this:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>cmd/
+</span></span><span style="display:flex;"><span>    main.go &lt;-- this file
+</span></span></code></pre><p>We will create a http server with a healthcheck that will return a json and the status 200.<br />
+We can pass the port it has to listen to via cli args.</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">package</span> main
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">import</span> (
@@ -207,33 +208,19 @@ Let's create our server:</p>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>	http.<span style="color:#900;font-weight:bold">ListenAndServe</span>(<span style="color:#d14">&#34;:&#34;</span><span style="color:#000;font-weight:bold">+*</span>port, <span style="color:#000;font-weight:bold">nil</span>)
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre><p>What this code does:</p>
-<ul>
-<li>Read <code>--port</code> flag (required)</li>
-<li>Create one endpoint:
-<ul>
-<li><code>/healthz</code>: standard endpoint to check if a service is running</li>
-</ul>
-</li>
-</ul>
-<p>We can run a quick test:</p>
+</span></span></code></pre><p>We can run a quick test:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>go build -o bluegreendemo cmd/main.go
 </span></span><span style="display:flex;"><span>./bluegreendemo --port <span style="color:#099">8080</span> &amp;
 </span></span><span style="display:flex;"><span>sleep <span style="color:#099">1</span>
 </span></span><span style="display:flex;"><span>curl -s http://localhost:8080/healthz | jq
 </span></span><span style="display:flex;"><span>pkill -f <span style="color:#d14">&#34;./bluegreendemo --port 8080&#34;</span>
-</span></span></code></pre><p>(<code>jq</code> is optional. I use it to add some color to the JSON content)</p>
-<p>You should see something like:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2">...</span>
-</span></span><span style="display:flex;"><span>{
+</span></span></code></pre><p>You should see the health response:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#000080">&#34;message&#34;</span>: <span style="color:#d14">&#34;ok&#34;</span>
 </span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2">...</span>
 </span></span></code></pre><h3 id="create-a-local-vm-with-multipass">Create a local VM with multipass</h3>
-<p>First we need to install multipass following the <a href="https://canonical.com/multipass/install">official docs</a>.</p>
-<p>For example, for macOS with Homebrew you can just run:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>brew install multipass
-</span></span></code></pre><p>We will create a VM locally with:</p>
+<p>We will create a VM in our computer using multipass following the <a href="https://canonical.com/multipass/install">official docs</a>.</p>
+<p>Our VM locally will have the following specs:</p>
 <ul>
 <li>Ubuntu 24.04</li>
 <li>2 CPUs</li>
@@ -241,113 +228,139 @@ Let's create our server:</p>
 <li>15GB of HD</li>
 </ul>
 <p>Feel free to tweak your numbers.</p>
-<p>Creating the VM is as simple as running the following command:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>multipass launch 24.04 --name bluegreen-demo --cpus <span style="color:#099">2</span> --memory 4G --disk 15G
-</span></span></code></pre><p>After some time we should be able to find our VM running:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>multipass list
-</span></span></code></pre><pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>Name                    State             IPv4             Image
+<p>For example, for macOS with Homebrew you can just run:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>brew install multipass
+</span></span><span style="display:flex;"><span>multipass launch 24.04 --name bluegreen-demo --cpus <span style="color:#099">2</span> --memory 4G --disk 15G
+</span></span><span style="display:flex;"><span>multipass list
+</span></span></code></pre><p>We should see that the machine is running:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>Name                    State             IPv4             Image
 </span></span><span style="display:flex;"><span>bluegreen-demo          Running           192.168.64.8     Ubuntu 24.04 LTS
-</span></span></code></pre><p>We can open a shell to the VM by running:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>multipass shell bluegreen-demo
-</span></span></code></pre><p>We should see a prompt like:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>ubuntu@bluegreen-demo:~$
-</span></span></code></pre><h3 id="install-nginx">Install nginx</h3>
-<p>We need to install nginx in Ubuntu.</p>
+</span></span></code></pre><h3 id="deploy-and-start-the-application-in-the-vm">Deploy and start the application in the VM</h3>
+<p>To handle our deployment process cleanly, we'll create three specialized scripts:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>cmd/
+</span></span><span style="display:flex;"><span>    main.go
+</span></span><span style="display:flex;"><span>scripts/
+</span></span><span style="display:flex;"><span>    prepare.sh   # Handles building and file transfers
+</span></span><span style="display:flex;"><span>    apply.sh     # Manages deployment in the VM
+</span></span><span style="display:flex;"><span>    ci.sh        # Orchestrates the whole process
+</span></span><span style="display:flex;"><span>go.mod
+</span></span></code></pre><p>Make the scripts executable:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>chmod +x scripts/prepare.sh scripts/apply.sh scripts/ci.sh
+</span></span></code></pre><p>Let's implement each script:</p>
+<h4 id="preparesh---building-and-file-transfers">prepare.sh - Building and File Transfers</h4>
+<p>This script handles the build process and transferring files to the VM:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Cross-compile for Linux ARM64</span>
+</span></span><span style="display:flex;"><span><span style="color:#008080">GOOS</span><span style="color:#000;font-weight:bold">=</span>linux <span style="color:#008080">GOARCH</span><span style="color:#000;font-weight:bold">=</span>arm64 go build -o bluegreendemo cmd/main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Transfer files to the VM</span>
+</span></span><span style="display:flex;"><span>multipass transfer ./bluegreendemo bluegreen-demo:bluegreendemo
+</span></span><span style="display:flex;"><span>multipass transfer ./scripts/apply.sh bluegreen-demo:apply.sh
+</span></span></code></pre><h4 id="applysh---vm-side-deployment">apply.sh - VM-side Deployment</h4>
+<p>This script runs inside the VM and handles the application deployment:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Prepare app directory</span>
+</span></span><span style="display:flex;"><span>sudo mkdir -p /app/
+</span></span><span style="display:flex;"><span>sudo chown ubuntu:ubuntu /app/
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Deploy application</span>
+</span></span><span style="display:flex;"><span>mv bluegreendemo /app/app
+</span></span><span style="display:flex;"><span>chmod +x /app/app
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Start the application</span>
+</span></span><span style="display:flex;"><span>/app/app --port <span style="color:#099">8081</span> &amp;
+</span></span></code></pre><h4 id="cish---orchestrating-the-process">ci.sh - Orchestrating the Process</h4>
+<p>This script coordinates the whole deployment:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Preparing deployment...&#34;</span>
+</span></span><span style="display:flex;"><span>./scripts/prepare.sh
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Deploying new version...&#34;</span>
+</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- ./apply.sh
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Verify deployment</span>
+</span></span><span style="display:flex;"><span><span style="color:#008080">VM_IP</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>multipass info bluegreen-demo | grep IPv4 | awk <span style="color:#d14">&#39;{print $2}&#39;</span><span style="color:#000;font-weight:bold">)</span>
+</span></span><span style="display:flex;"><span>curl -s http://<span style="color:#008080">$VM_IP</span>:8081/healthz | jq
+</span></span></code></pre><p>Run the deployment:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>./scripts/ci.sh
+</span></span></code></pre><p>If you see a JSON response with <code>{&quot;message&quot;: &quot;ok&quot;}</code>, congratulations! Your app is running.</p>
+<h3 id="install-nginx">Install nginx</h3>
+<p>We need to install and configure nginx in our VM:</p>
+<ul>
+<li>Install nginx</li>
+<li>Start it and configure it to start on boot</li>
+<li>Check the status</li>
+</ul>
+<p>For that we will open a shell in the VM using <code>multipass shell bluegreen-demo</code> and run the following set of commands:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>sudo apt update
 </span></span><span style="display:flex;"><span>sudo apt install nginx -y
 </span></span><span style="display:flex;"><span>nginx -v
 </span></span><span style="display:flex;"><span>sudo systemctl start nginx
 </span></span><span style="display:flex;"><span>sudo systemctl <span style="color:#0086b3">enable</span> nginx
 </span></span><span style="display:flex;"><span>sudo systemctl status nginx
-</span></span></code></pre><p>What are we doing?</p>
-<ul>
-<li>Install nginx</li>
-<li>Start it and configure it to start on boot</li>
-<li>Check the status</li>
-</ul>
-<p>At the end of the script you should see something like:</p>
+</span></span></code></pre><p>At the end of the script you should see something like:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>Sep 13 10:26:14 bluegreen-demo systemd[1]: Starting nginx.service - A high performance web server and a reverse proxy server...
 </span></span><span style="display:flex;"><span>Sep 13 10:26:14 bluegreen-demo systemd[1]: Started nginx.service - A high performance web server and a reverse proxy server.
-</span></span></code></pre><h3 id="deploy-and-start-the-application-in-the-vm">Deploy and start the application in the VM</h3>
-<p>We will start building our application.<br />
-We will run it on port <code>8081</code>.</p>
-<p>We will create a small script that will handle the deployment of our app.</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>cmd/
-</span></span><span style="display:flex;"><span>    main.go
-</span></span><span style="display:flex;"><span>scripts/
-</span></span><span style="display:flex;"><span>    deploy.sh &lt;-- this file
-</span></span><span style="display:flex;"><span>go.mod
-</span></span></code></pre><pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>mkdir -p scripts
-</span></span><span style="display:flex;"><span>touch scripts/deploy.sh
-</span></span><span style="display:flex;"><span>chmod +x scripts/deploy.sh
-</span></span></code></pre><p>These are the contents of the script for now:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
-</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
-</span></span><span style="display:flex;"><span><span style="color:#008080">GOOS</span><span style="color:#000;font-weight:bold">=</span>linux <span style="color:#008080">GOARCH</span><span style="color:#000;font-weight:bold">=</span>arm64 go build -o bluegreendemo cmd/main.go
-</span></span><span style="display:flex;"><span>multipass transfer ./bluegreendemo bluegreen-demo:bluegreendemo
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- sudo mkdir -p /app/
-</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- sudo chown ubuntu:ubuntu /app/
-</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- mv bluegreendemo /app/app
-</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- chmod +x /app/app
-</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- /app/app --port <span style="color:#099">8081</span> &amp;
-</span></span></code></pre><p>This script builds the server, transfers it to the VM, and executes it on port 8081.</p>
-<p>We can test that it is running by accessing <code>http://&lt;vm ip&gt;:8081/healthz</code></p>
-<p>To do so we can do:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#008080">VM_IP</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>multipass info bluegreen-demo | grep IPv4 | awk <span style="color:#d14">&#39;{print $2}&#39;</span><span style="color:#000;font-weight:bold">)</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>curl -s http://<span style="color:#008080">$VM_IP</span>:8081/healthz | jq
-</span></span></code></pre><p>(again <code>jq</code> is optional)</p>
-<p>We have now our application running in the VM.</p>
-<h3 id="configure-nginx-to-server-our-application">Configure nginx to server our application</h3>
-<p>Let's define a configuration for nginx.<br />
-Let's create this file in our local machine:</p>
+</span></span></code></pre><h3 id="configure-nginx-to-serve-our-application">Configure nginx to serve our application</h3>
+<p>We will configure nginx to serve our application in port 80 (default for http). For that we will create a minimum nginx.conf file to listen to port 80 and forward the requests to our app in port 8081.</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>cmd/
 </span></span><span style="display:flex;"><span>    main.go
 </span></span><span style="display:flex;"><span>nginx/
 </span></span><span style="display:flex;"><span>    nginx.conf &lt;-- this file
 </span></span><span style="display:flex;"><span>scripts/
-</span></span><span style="display:flex;"><span>    deploy.sh
+</span></span><span style="display:flex;"><span>    apply.sh
+</span></span><span style="display:flex;"><span>    ci.sh
+</span></span><span style="display:flex;"><span>    prepare.sh
 </span></span><span style="display:flex;"><span>go.mod
-</span></span></code></pre><pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>mkdir -p nginx
-</span></span><span style="display:flex;"><span>touch nginx/nginx.conf
 </span></span></code></pre><p>These are the contents:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>events {
-</span></span><span style="display:flex;"><span>    worker_connections 1024;
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">events</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">worker_connections</span> <span style="color:#099">1024</span>;
 </span></span><span style="display:flex;"><span>}
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>http {
-</span></span><span style="display:flex;"><span>    include /etc/nginx/mime.types;
-</span></span><span style="display:flex;"><span>    default_type application/octet-stream;
+</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">http</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">include</span> <span style="color:#d14">/etc/nginx/mime.types</span>;
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    server {
-</span></span><span style="display:flex;"><span>        listen 80;
-</span></span><span style="display:flex;"><span>        server_name _;
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">server</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">listen</span> <span style="color:#099">80</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">server_name</span> <span style="color:#d14">_</span>;
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        location / {
-</span></span><span style="display:flex;"><span>            proxy_pass http://localhost:8081;
-</span></span><span style="display:flex;"><span>            proxy_set_header Host $host;
-</span></span><span style="display:flex;"><span>            proxy_set_header X-Real-IP $remote_addr;
-</span></span><span style="display:flex;"><span>            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-</span></span><span style="display:flex;"><span>            proxy_set_header X-Forwarded-Proto $scheme;
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">location</span> <span style="color:#d14">/</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#000;font-weight:bold">proxy_pass</span> <span style="color:#d14">http://localhost:8081</span>;
 </span></span><span style="display:flex;"><span>        }
 </span></span><span style="display:flex;"><span>    }
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre><p>We will transfer this file and run a step to apply the config for nginx.</p>
-<p>We need to add this line after the app compilation:</p>
+</span></span></code></pre><p>We will need to update our scripts to handle the nginx configuration:</p>
+<ol>
+<li>Add nginx.conf transfer to <code>prepare.sh</code>:</li>
+</ol>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>multipass transfer ./nginx/nginx.conf bluegreen-demo:nginx/nginx.conf
-</span></span></code></pre><p>And this line at the end to load the new configuration</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- sudo mv nginx/nginx.conf /etc/nginx/nginx.conf
-</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- sudo nginx -s reload
-</span></span></code></pre><p>Let's try all out by running:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>./scripts/deploy.sh
-</span></span></code></pre><p>Now we should be able to access our app using the port 80.<br />
-We can testing by curling our app without any port defined.</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#008080">VM_IP</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>multipass info bluegreen-demo | grep IPv4 | awk <span style="color:#d14">&#39;{print $2}&#39;</span><span style="color:#000;font-weight:bold">)</span>
+</span></span></code></pre><ol start="2">
+<li>Add nginx configuration to <code>apply.sh</code>:</li>
+</ol>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>sudo mv nginx/nginx.conf /etc/nginx/nginx.conf
+</span></span><span style="display:flex;"><span>sudo nginx -s reload
+</span></span></code></pre><p>Let's try it out by running:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>./scripts/ci.sh
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Now we should be able to access our app using the port 80:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#d14">```</span>shell
+</span></span><span style="display:flex;"><span><span style="color:#008080">VM_IP</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>multipass info bluegreen-demo | grep IPv4 | awk <span style="color:#d14">&#39;{print $2}&#39;</span><span style="color:#000;font-weight:bold">)</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>curl -s http://<span style="color:#008080">$VM_IP</span>/healthz | jq
 </span></span></code></pre><p>We have nginx serving our app.</p>
 <h2 id="block-2-configure-blue-green-deployment">Block 2: Configure blue green deployment</h2>
+<p>Let's implement a blue-green deployment strategy that allows us to deploy new versions without downtime. The idea is simple:</p>
+<ul>
+<li>Run two instances of our application (blue and green)</li>
+<li>Only one instance receives traffic at a time</li>
+<li>Deploy new versions to the inactive instance</li>
+<li>Switch traffic to the new version once it's ready</li>
+</ul>
+<p>Here's how it works:</p>
 <div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(w:800,h:300)
 
 browser:Browser@home
@@ -372,7 +385,8 @@ nginx.e --&gt; blue.w
 @blue(y:&amp;nginx.c,title: &quot;blue&quot;,  port: 8081, bg: &quot;rgb(0, 119, 194)&quot;, fg: &quot;#fff&quot;)
 @green(y:120,title: &quot;green&quot;, port: 8082, bg: &quot;rgb(0, 118, 108)&quot;, fg: &quot;#fff&quot;)
 
-</code></pre><div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(w:800,h:300)
+</code></pre><p>And after deploying and switching:</p>
+<div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(w:800,h:300)
 
 browser:Browser@home
 vps:VM@ubuntu {
@@ -396,10 +410,12 @@ nginx.e --&gt; green.w
 @blue(y:120,title: &quot;blue&quot;,  port: 8081, bg: &quot;rgb(0, 119, 194)&quot;, fg: &quot;#fff&quot;)
 @green(y:&amp;nginx.c,title: &quot;green&quot;, port: 8082, bg: &quot;rgb(0, 118, 108)&quot;, fg: &quot;#fff&quot;)
 
-</code></pre><h3 id="blue-green-deployment-1">Blue Green Deployment</h3>
-<p>Now that we have our basic setup with the VM, nginx, and a simple Go server, let's implement blue-green deployment.</p>
-<p>First, we need to enhance our Go server to support the status endpoint and color attribute.</p>
-<p>Update the server code to include the color flag and status endpoint:</p>
+</code></pre><h3 id="adding-color-support-to-our-server">Adding Color Support to Our Server</h3>
+<p>First, let's enhance our Go server to identify which version (blue or green) it is:</p>
+<ul>
+<li>Add a <code>--color</code> flag to identify blue/green instances</li>
+<li>Add a <code>/status</code> endpoint to report the current color</li>
+</ul>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">package</span> main
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">import</span> (
@@ -416,7 +432,9 @@ nginx.e --&gt; green.w
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">func</span> <span style="color:#900;font-weight:bold">main</span>() {
 </span></span><span style="display:flex;"><span>	<span style="color:#000;font-weight:bold">var</span> port = flag.<span style="color:#900;font-weight:bold">String</span>(<span style="color:#d14">&#34;port&#34;</span>, <span style="color:#d14">&#34;&#34;</span>, <span style="color:#d14">&#34;Port to listen on&#34;</span>)
-</span></span><span style="display:flex;"><span>	<span style="color:#000;font-weight:bold">var</span> color = flag.<span style="color:#900;font-weight:bold">String</span>(<span style="color:#d14">&#34;color&#34;</span>, <span style="color:#d14">&#34;&#34;</span>, <span style="color:#d14">&#34;Color value to return in responses&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#998;font-style:italic">// NEW: Get &#34;color&#34; as arg when the server starts
+</span></span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"></span>	<span style="color:#000;font-weight:bold">var</span> color = flag.<span style="color:#900;font-weight:bold">String</span>(<span style="color:#d14">&#34;color&#34;</span>, <span style="color:#d14">&#34;&#34;</span>, <span style="color:#d14">&#34;Color value to return in responses&#34;</span>)
 </span></span><span style="display:flex;"><span>	flag.<span style="color:#900;font-weight:bold">Parse</span>()
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>	<span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">*</span>port <span style="color:#000;font-weight:bold">==</span> <span style="color:#d14">&#34;&#34;</span> <span style="color:#000;font-weight:bold">||</span> <span style="color:#000;font-weight:bold">*</span>color <span style="color:#000;font-weight:bold">==</span> <span style="color:#d14">&#34;&#34;</span> {
@@ -427,7 +445,8 @@ nginx.e --&gt; green.w
 </span></span><span style="display:flex;"><span>		<span style="color:#900;font-weight:bold">writeJsonResponse</span>(w, <span style="color:#000;font-weight:bold">map</span>[<span style="color:#458;font-weight:bold">string</span>]<span style="color:#458;font-weight:bold">string</span>{<span style="color:#d14">&#34;message&#34;</span>: <span style="color:#d14">&#34;ok&#34;</span>})
 </span></span><span style="display:flex;"><span>	})
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>	http.<span style="color:#900;font-weight:bold">HandleFunc</span>(<span style="color:#d14">&#34;/status&#34;</span>, <span style="color:#000;font-weight:bold">func</span>(w http.ResponseWriter, r <span style="color:#000;font-weight:bold">*</span>http.Request) {
+</span></span><span style="display:flex;"><span>    <span style="color:#998;font-style:italic">// NEW: Return the &#34;color&#34; in the status endpoint
+</span></span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"></span>	http.<span style="color:#900;font-weight:bold">HandleFunc</span>(<span style="color:#d14">&#34;/status&#34;</span>, <span style="color:#000;font-weight:bold">func</span>(w http.ResponseWriter, r <span style="color:#000;font-weight:bold">*</span>http.Request) {
 </span></span><span style="display:flex;"><span>		<span style="color:#900;font-weight:bold">writeJsonResponse</span>(w, <span style="color:#000;font-weight:bold">map</span>[<span style="color:#458;font-weight:bold">string</span>]<span style="color:#458;font-weight:bold">string</span>{
 </span></span><span style="display:flex;"><span>			<span style="color:#d14">&#34;color&#34;</span>: <span style="color:#000;font-weight:bold">*</span>color,
 </span></span><span style="display:flex;"><span>		})
@@ -435,203 +454,73 @@ nginx.e --&gt; green.w
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>	http.<span style="color:#900;font-weight:bold">ListenAndServe</span>(<span style="color:#d14">&#34;:&#34;</span><span style="color:#000;font-weight:bold">+*</span>port, <span style="color:#000;font-weight:bold">nil</span>)
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre><p>What this code does:</p>
-<ul>
-<li>Read <code>--color</code> and <code>--port</code> flags (required)</li>
-<li>Create two endpoints:
-<ul>
-<li><code>/healthz</code>: standard endpoint to check if a service is running</li>
-<li><code>/status</code>: returns the color of the deployment</li>
-</ul>
-</li>
-</ul>
-<p>We will define that <code>blue</code> listens on port <code>8081</code> and <code>green</code> listens on port <code>8082</code>.</p>
-<ul>
-<li>Blue: 8081</li>
-<li>Green: 8082</li>
-</ul>
-<h3 id="enhanced-deployment-scripts">Enhanced Deployment Scripts</h3>
-<p>Now our script runs from our host and we are mixing commands for transfering files and commands for executing actions in our VPS.</p>
-<p>It will make more sense on the next post in this series, but we will split our <code>deploy.sh</code> script into:</p>
-<ul>
-<li><code>apply.sh</code>: it will run within the VPS and will run all the commands required to release our next deployment.</li>
-<li><code>prepare.sh</code>: it build the app and transfer all the files we need, including <code>apply.sh</code></li>
-<li><code>ci.sh</code>: it will call both</li>
-</ul>
-<p>The file structure will look like:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>cmd/
-</span></span><span style="display:flex;"><span>    main.go
-</span></span><span style="display:flex;"><span>nginx/
-</span></span><span style="display:flex;"><span>    nginx.conf
-</span></span><span style="display:flex;"><span>scripts/
-</span></span><span style="display:flex;"><span>    apply.sh &lt;-- new
-</span></span><span style="display:flex;"><span>    ci.sh &lt;-- new
-</span></span><span style="display:flex;"><span>    prepare.sh &lt;-- new
-</span></span><span style="display:flex;"><span>go.mod
-</span></span></code></pre><p>To create the files:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>touch scripts/apply.sh
-</span></span><span style="display:flex;"><span>touch scripts/ci.sh
-</span></span><span style="display:flex;"><span>touch scripts/prepare.sh
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>chmod +x scripts/apply.sh
-</span></span><span style="display:flex;"><span>chmod +x scripts/ci.sh
-</span></span><span style="display:flex;"><span>chmod +x scripts/prepare.sh
-</span></span></code></pre><h4 id="preparesh">prepare.sh</h4>
-<p>We will take the first part of the <code>deployment.sh</code> file and move it to <code>prepare.sh</code>.<br />
-We will also add the transfer of the <code>apply.sh</code> file itself.</p>
+</span></span></code></pre><h3 id="updating-the-deployment-scripts-for-blue-green">Updating the Deployment Scripts for Blue-Green</h3>
+<p>Now that we've added color support to our server, we need to update our existing deployment scripts to handle the blue-green deployment strategy. Let's modify each script to support this new functionality:</p>
+<h4 id="updates-to-preparesh">Updates to prepare.sh</h4>
+<p>We'll update our existing <code>prepare.sh</code> script to handle the nginx configuration files for blue-green deployment:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
 </span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
-</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Cross-compile for Linux ARM64 (typical for multipass VMs)</span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Cross-compile for Linux ARM64</span>
 </span></span><span style="display:flex;"><span><span style="color:#008080">GOOS</span><span style="color:#000;font-weight:bold">=</span>linux <span style="color:#008080">GOARCH</span><span style="color:#000;font-weight:bold">=</span>arm64 go build -o bluegreendemo cmd/main.go
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Transfer files to the VM</span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Transfer all required files to the VM</span>
 </span></span><span style="display:flex;"><span>multipass transfer ./bluegreendemo bluegreen-demo:bluegreendemo
-</span></span><span style="display:flex;"><span>multipass transfer ./nginx/nginx.conf bluegreen-demo:nginx.conf
+</span></span><span style="display:flex;"><span>multipass transfer ./nginx/nginx.conf bluegreen-demo:nginx/nginx.conf
 </span></span><span style="display:flex;"><span>multipass transfer ./scripts/apply.sh bluegreen-demo:apply.sh
-</span></span></code></pre><h3 id="applysh">apply.sh</h3>
-<p>We will take the second part of the <code>deploy.sh</code> file and move it to <code>apply.sh</code>.<br />
-We will run within the VPS so we can get rid of <code>multipass exec</code>:</p>
+</span></span></code></pre><h4 id="updates-to-applysh">Updates to apply.sh</h4>
+<p>We'll enhance our existing <code>apply.sh</code> script to handle the blue-green deployment logic:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
 </span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
-</span></span><span style="display:flex;"><span>sudo mkdir -p /app/
-</span></span><span style="display:flex;"><span>sudo chown ubuntu:ubuntu /app/
-</span></span><span style="display:flex;"><span>mv bluegreendemo /app/blue
-</span></span><span style="display:flex;"><span>chmod +x /app/blue
-</span></span><span style="display:flex;"><span>/app/blue --port <span style="color:#099">8081</span> --color blue &amp;
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Get current active color</span>
+</span></span><span style="display:flex;"><span><span style="color:#008080">CURRENT_COLOR</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>curl -s http://localhost/status | jq -r .color<span style="color:#000;font-weight:bold">)</span>
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>sudo mv nginx.conf /etc/nginx/nginx.conf
-</span></span><span style="display:flex;"><span>sudo nginx -s reload
-</span></span><span style="display:flex;"><span>sleep <span style="color:#099">1</span>
-</span></span></code></pre><h3 id="cish">ci.sh</h3>
-<p>We will invoke both files, one after the other along side some messages:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
-</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
-</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Preparing the VM...&#34;</span>
-</span></span><span style="display:flex;"><span>./scripts/prepare.sh
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Deploying the new version...&#34;</span>
-</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- ./apply.sh
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>curl -s http://<span style="color:#000;font-weight:bold">$(</span>multipass info bluegreen-demo | grep IPv4 | awk <span style="color:#d14">&#39;{print $2}&#39;</span><span style="color:#000;font-weight:bold">)</span>/status
-</span></span></code></pre><p>We should be able to run <code>ci.sh</code> without erros:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>./scripts/ci.sh
-</span></span></code></pre><p>The response is always the same for now.</p>
-<h3 id="prepresh">prepre.sh</h3>
-<p>We will take the first part of the <code>deployment.sh</code> file and move it to <code>prepare.sh</code>.<br />
-We will also add the transfer of the <code>apply.sh</code> file itself.</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
-</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
-</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Cross-compile for Linux ARM64 (typical for multipass VMs)</span>
-</span></span><span style="display:flex;"><span><span style="color:#008080">GOOS</span><span style="color:#000;font-weight:bold">=</span>linux <span style="color:#008080">GOARCH</span><span style="color:#000;font-weight:bold">=</span>arm64 go build -o bluegreendemo cmd/main.go
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Transfer files to the VM</span>
-</span></span><span style="display:flex;"><span>multipass transfer ./bluegreendemo bluegreen-demo:bluegreendemo
-</span></span><span style="display:flex;"><span>multipass transfer ./nginx/nginx.conf bluegreen-demo:nginx.conf
-</span></span><span style="display:flex;"><span>multipass transfer ./scripts/apply.sh bluegreen-demo:apply.sh
-</span></span></code></pre><h3 id="applysh-1">apply.sh</h3>
-<p>We will take the second part of the <code>deploy.sh</code> file and move it to <code>apply.sh</code>.<br />
-We will run within the VPS so we can get rid of <code>multipass exec</code>:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
-</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
-</span></span><span style="display:flex;"><span>sudo mkdir -p /app/
-</span></span><span style="display:flex;"><span>sudo chown ubuntu:ubuntu /app/
-</span></span><span style="display:flex;"><span>mv bluegreendemo /app/blue
-</span></span><span style="display:flex;"><span>chmod +x /app/blue
-</span></span><span style="display:flex;"><span>/app/blue --port <span style="color:#099">8081</span> --color blue &amp;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>sudo mv nginx.conf /etc/nginx/nginx.conf
-</span></span><span style="display:flex;"><span>sudo nginx -s reload
-</span></span><span style="display:flex;"><span>sleep <span style="color:#099">1</span>
-</span></span></code></pre><h3 id="cish-1">ci.sh</h3>
-<p>We will invoke both files, one after the other along side some messages:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
-</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
-</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Preparing the VM...&#34;</span>
-</span></span><span style="display:flex;"><span>./scripts/prepare.sh
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Deploying the new version...&#34;</span>
-</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- ./apply.sh
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>curl -s http://<span style="color:#000;font-weight:bold">$(</span>multipass info bluegreen-demo | grep IPv4 | awk <span style="color:#d14">&#39;{print $2}&#39;</span><span style="color:#000;font-weight:bold">)</span>/status
-</span></span></code></pre><p>We should be able to run <code>ci.sh</code> without erros:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>./scripts/ci.sh
-</span></span></code></pre><p>The response is always the same for now.</p>
-<h3 id="implementing-blue-green-deployment">Implementing Blue-Green Deployment</h3>
-<p>We will run our blue/green deployment. This is what we will need to do:</p>
-<ul>
-<li>Discover the current color so we decide the next color.</li>
-<li>Copy the new app into the right directory (next color).</li>
-<li>Start the application with the right args.</li>
-<li>Update nginx to serve the next color.</li>
-</ul>
-<h4 id="discover-the-color">Discover the color</h4>
-<p>We just need to request our /status endpoint:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#008080">CURRENT_COLOR</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>curl -s http://localhost/status | jq -r .color<span style="color:#000;font-weight:bold">)</span>
-</span></span></code></pre><ul>
-<li><code>jq -r</code> returns the raw value, in this case <code>blue</code> or <code>green</code>. Without -r we would get <code>&quot;blue&quot;</code> or <code>&quot;green&quot;</code>.</li>
-</ul>
-<p>Based on the color we get we decide what is the next color and next port:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">[</span> -z <span style="color:#d14">&#34;</span><span style="color:#008080">$CURRENT_COLOR</span><span style="color:#d14">&#34;</span> <span style="color:#000;font-weight:bold">]</span>; <span style="color:#000;font-weight:bold">then</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#998;font-style:italic"># If CURRENT_COLOR is empty (no application is running), start with blue</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#008080">NEXT_COLOR</span><span style="color:#000;font-weight:bold">=</span><span style="color:#d14">&#34;blue&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#008080">NEXT_PORT</span><span style="color:#000;font-weight:bold">=</span><span style="color:#d14">&#34;8081&#34;</span>
-</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">elif</span> <span style="color:#000;font-weight:bold">[</span> <span style="color:#d14">&#34;</span><span style="color:#008080">$CURRENT_COLOR</span><span style="color:#d14">&#34;</span> <span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#34;blue&#34;</span> <span style="color:#000;font-weight:bold">]</span>; <span style="color:#000;font-weight:bold">then</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#998;font-style:italic"># If current is blue, next is green</span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Determine next deployment color</span>
+</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">[</span> <span style="color:#d14">&#34;</span><span style="color:#008080">$CURRENT_COLOR</span><span style="color:#d14">&#34;</span> <span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#34;blue&#34;</span> <span style="color:#000;font-weight:bold">]</span>; <span style="color:#000;font-weight:bold">then</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#008080">NEXT_COLOR</span><span style="color:#000;font-weight:bold">=</span><span style="color:#d14">&#34;green&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#008080">NEXT_PORT</span><span style="color:#000;font-weight:bold">=</span><span style="color:#d14">&#34;8082&#34;</span>
-</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">elif</span> <span style="color:#000;font-weight:bold">[</span> <span style="color:#d14">&#34;</span><span style="color:#008080">$CURRENT_COLOR</span><span style="color:#d14">&#34;</span> <span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#34;green&#34;</span> <span style="color:#000;font-weight:bold">]</span>; <span style="color:#000;font-weight:bold">then</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#998;font-style:italic"># If current is green, next is blue</span>
+</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">else</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#008080">NEXT_COLOR</span><span style="color:#000;font-weight:bold">=</span><span style="color:#d14">&#34;blue&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#008080">NEXT_PORT</span><span style="color:#000;font-weight:bold">=</span><span style="color:#d14">&#34;8081&#34;</span>
-</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">else</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">echo</span> -e <span style="color:#d14">&#34;Color not supported </span><span style="color:#008080">$CURRENT_COLOR</span><span style="color:#d14">&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">exit</span> <span style="color:#099">1</span>
 </span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">fi</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Deploying </span><span style="color:#008080">$NEXT_COLOR</span><span style="color:#d14"> on port </span><span style="color:#008080">$NEXT_PORT</span><span style="color:#d14">&#34;</span>
-</span></span></code></pre><p>And then we use the variables in the contents we had and:</p>
-<ul>
-<li>in case the next color is already running we kill it before Deploying</li>
-<li>we check that the running color is the one we expect</li>
-</ul>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>sudo mkdir -p /app/
-</span></span><span style="display:flex;"><span>sudo chown ubuntu:ubuntu /app/
 </span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Prepare deployment</span>
+</span></span><span style="display:flex;"><span>sudo mkdir -p /app/
+</span></span><span style="display:flex;"><span>sudo chown ubuntu:ubuntu /app/
 </span></span><span style="display:flex;"><span>pkill -f /app/<span style="color:#008080">$NEXT_COLOR</span> <span style="color:#000;font-weight:bold">||</span> <span style="color:#0086b3">true</span>
 </span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Deploy new version</span>
 </span></span><span style="display:flex;"><span>mv bluegreendemo /app/<span style="color:#008080">$NEXT_COLOR</span>
 </span></span><span style="display:flex;"><span>chmod +x /app/<span style="color:#008080">$NEXT_COLOR</span>
+</span></span><span style="display:flex;"><span>/app/<span style="color:#008080">$NEXT_COLOR</span> --port <span style="color:#008080">$NEXT_PORT</span> --color <span style="color:#008080">$NEXT_COLOR</span> &amp;
+</span></span><span style="display:flex;"><span>sleep <span style="color:#099">2</span>  <span style="color:#998;font-style:italic"># Wait for startup</span>
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Start the application in background</span>
-</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Starting /app/</span><span style="color:#008080">$NEXT_COLOR</span><span style="color:#d14"> on port </span><span style="color:#008080">$NEXT_PORT</span><span style="color:#d14">&#34;</span>
-</span></span><span style="display:flex;"><span>nohup /app/<span style="color:#008080">$NEXT_COLOR</span> --port <span style="color:#008080">$NEXT_PORT</span> --color <span style="color:#008080">$NEXT_COLOR</span> &amp;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Give it a moment to start</span>
-</span></span><span style="display:flex;"><span>sleep <span style="color:#099">2</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#008080">NEXT_COLOR_CHECK</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>curl -s http://localhost:<span style="color:#008080">$NEXT_PORT</span>/status | jq -r .color<span style="color:#000;font-weight:bold">)</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">[</span> <span style="color:#d14">&#34;</span><span style="color:#008080">$NEXT_COLOR_CHECK</span><span style="color:#d14">&#34;</span> !<span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#34;</span><span style="color:#008080">$NEXT_COLOR</span><span style="color:#d14">&#34;</span> <span style="color:#000;font-weight:bold">]</span>; <span style="color:#000;font-weight:bold">then</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">echo</span> -e <span style="color:#d14">&#34;</span><span style="color:#008080">$RED</span><span style="color:#d14"> Deployment failed! </span><span style="color:#008080">$NEXT_COLOR</span><span style="color:#d14"> did not start correctly </span><span style="color:#008080">$NC</span><span style="color:#d14">&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">exit</span> <span style="color:#099">1</span>
-</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">fi</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>sudo mv nginx.conf /etc/nginx/nginx.conf
-</span></span><span style="display:flex;"><span>sudo nginx -s reload
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#008080">CURRENT_COLOR</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>curl -s http://localhost/status | jq -r .color<span style="color:#000;font-weight:bold">)</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">[</span> <span style="color:#d14">&#34;</span><span style="color:#008080">$CURRENT_COLOR</span><span style="color:#d14">&#34;</span> <span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#34;</span><span style="color:#008080">$NEXT_COLOR</span><span style="color:#d14">&#34;</span> <span style="color:#000;font-weight:bold">]</span>; <span style="color:#000;font-weight:bold">then</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">echo</span> -e <span style="color:#d14">&#34;</span><span style="color:#008080">$GREEN</span><span style="color:#d14"> Deployment successful! Current color is now </span><span style="color:#008080">$CURRENT_COLOR</span><span style="color:#d14"> </span><span style="color:#008080">$NC</span><span style="color:#d14">&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">exit</span> <span style="color:#099">0</span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Verify deployment</span>
+</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">if</span> curl -s http://localhost:<span style="color:#008080">$NEXT_PORT</span>/status | grep -q <span style="color:#d14">&#34;</span><span style="color:#008080">$NEXT_COLOR</span><span style="color:#d14">&#34;</span>; <span style="color:#000;font-weight:bold">then</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#998;font-style:italic"># Switch traffic</span>
+</span></span><span style="display:flex;"><span>    sudo mv *.conf /etc/nginx/
+</span></span><span style="display:flex;"><span>    sudo ln -sf /etc/nginx/<span style="color:#008080">$NEXT_COLOR</span>.conf /etc/nginx/upstream.conf
+</span></span><span style="display:flex;"><span>    sudo nginx -s reload
+</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Switched to </span><span style="color:#008080">$NEXT_COLOR</span><span style="color:#d14">&#34;</span>
 </span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">else</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">echo</span> -e <span style="color:#d14">&#34;</span><span style="color:#008080">$RED</span><span style="color:#d14"> Deployment failed! Current color is still </span><span style="color:#008080">$CURRENT_COLOR</span><span style="color:#d14"> </span><span style="color:#008080">$NC</span><span style="color:#d14">&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Deployment failed - new version not responding&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#0086b3">exit</span> <span style="color:#099">1</span>
 </span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">fi</span>
+</span></span></code></pre><h4 id="updates-to-cish">Updates to ci.sh</h4>
+<p>We'll update our existing <code>ci.sh</code> script to handle the verification of the deployment switch:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic">#! /bin/bash
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-weight:bold;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Preparing deployment...&#34;</span>
+</span></span><span style="display:flex;"><span>./scripts/prepare.sh
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Deploying new version...&#34;</span>
+</span></span><span style="display:flex;"><span>multipass <span style="color:#0086b3">exec</span> bluegreen-demo -- ./apply.sh
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"># Verify the switch</span>
+</span></span><span style="display:flex;"><span><span style="color:#008080">VM_IP</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>multipass info bluegreen-demo | grep IPv4 | awk <span style="color:#d14">&#39;{print $2}&#39;</span><span style="color:#000;font-weight:bold">)</span>
+</span></span><span style="display:flex;"><span><span style="color:#0086b3">echo</span> <span style="color:#d14">&#34;Current version:&#34;</span>
+</span></span><span style="display:flex;"><span>curl -s http://<span style="color:#008080">$VM_IP</span>/status | jq
 </span></span></code></pre><p>If we run the ci again we should find this line:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>./scripts/ci.sh
 </span></span><span style="display:flex;"><span>
@@ -652,55 +541,83 @@ We will run within the VPS so we can get rid of <code>multipass exec</code>:</p>
 </span></span><span style="display:flex;"><span>Checking default
 </span></span><span style="display:flex;"><span>blue
 </span></span></code></pre><p>Green is running properly but nginx still points to <code>blue</code> (we hardcoded it, remember?)</p>
-<h3 id="update-nginx-to-point-to-next-color">Update nginx to point to next color:</h3>
-<p>We are going to add 2 files to the nginx directory:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>cmd/
-</span></span><span style="display:flex;"><span>    main.go
-</span></span><span style="display:flex;"><span>nginx/
-</span></span><span style="display:flex;"><span>    blue.conf &lt;-- new
-</span></span><span style="display:flex;"><span>    green.conf &lt;-- new
-</span></span><span style="display:flex;"><span>    nginx.conf
-</span></span><span style="display:flex;"><span>scripts/
-</span></span><span style="display:flex;"><span>    apply.sh
-</span></span><span style="display:flex;"><span>    ci.sh
-</span></span><span style="display:flex;"><span>    prepare.sh
-</span></span><span style="display:flex;"><span>go.mod
-</span></span></code></pre><p>They will contain the upstream config for their respective colors:</p>
-<p>Blue:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>upstream app_backend {
-</span></span><span style="display:flex;"><span>    server 127.0.0.1:8081;
+<h3 id="configuring-nginx-for-zero-downtime-switching">Configuring Nginx for Zero-Downtime Switching</h3>
+<p>The final piece is setting up nginx to smoothly switch between versions. The key is to use nginx's upstream feature and symbolic links to make the switch instant and atomic.</p>
+<h4 id="1-setting-up-the-configuration-structure">1. Setting up the Configuration Structure</h4>
+<p>We'll create three configuration files:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>nginx/
+</span></span><span style="display:flex;"><span>    nginx.conf         # Main configuration with routing logic
+</span></span><span style="display:flex;"><span>    blue.conf          # Blue instance configuration (port 8081)
+</span></span><span style="display:flex;"><span>    green.conf         # Green instance configuration (port 8082)
+</span></span></code></pre><h4 id="2-creating-instance-specific-configs">2. Creating Instance-Specific Configs</h4>
+<p>Each color gets its own configuration that defines where its instance runs:</p>
+<p><code>blue.conf</code>:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">upstream</span> <span style="color:#d14">app_backend</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">server</span> 127.0.0.1:<span style="color:#099">8081</span>;
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre><p>Green:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>upstream app_backend {
-</span></span><span style="display:flex;"><span>    server 127.0.0.1:8082;
+</span></span></code></pre><p><code>green.conf</code>:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">upstream</span> <span style="color:#d14">app_backend</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">server</span> 127.0.0.1:<span style="color:#099">8082</span>;
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre><p>We will update nginx conf to include the upstream config from another file:</p>
-<p>We will replace:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>proxy_pass http://localhost:8081;
-</span></span></code></pre><p>with</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>proxy_pass http://app_backend;
-</span></span></code></pre><p>And add this line under http:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>include /etc/nginx/upstream.conf;
-</span></span></code></pre><p>We will need to update our prepare.sh to transfer all files within the nginx directory.<br />
-Replace</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>multipass transfer ./nginx/nginx.conf bluegreen-demo:nginx.conf
-</span></span></code></pre><p>with</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>multipass transfer ./nginx/* bluegreen-demo:.
-</span></span></code></pre><p>And create a link to point to the right color so upstream.conf is dynamic:<br />
-We will update <code>apply.sh</code> and add this line before we reload nginx:</p>
-<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>...
-</span></span><span style="display:flex;"><span>sudo mv *.conf /etc/nginx/
+</span></span></code></pre><h4 id="3-setting-up-the-main-configuration">3. Setting up the Main Configuration</h4>
+<p>Update <code>nginx.conf</code> to use the dynamic backend:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">events</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">worker_connections</span> <span style="color:#099">1024</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">http</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">include</span> <span style="color:#d14">/etc/nginx/mime.types</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">include</span> <span style="color:#d14">/etc/nginx/upstream.conf</span>;  <span style="color:#998;font-style:italic"># Dynamic backend selection
+</span></span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">server</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">listen</span> <span style="color:#099">80</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">server_name</span> <span style="color:#d14">_</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">location</span> <span style="color:#d14">/</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#000;font-weight:bold">proxy_pass</span> <span style="color:#d14">http://app_backend</span>;  <span style="color:#998;font-style:italic"># Routes to active instance
+</span></span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"></span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre><h4 id="4-implementing-the-switch-mechanism">4. Implementing the Switch Mechanism</h4>
+<p>The switching mechanism is simple but effective:</p>
+<ol>
+<li>
+<p>Upload the configuration:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>multipass transfer ./nginx/nginx.conf bluegreen-demo:nginx/nginx.conf
+</span></span></code></pre></li>
+<li>
+<p>Set up the active configuration using a symbolic link:</p>
+<pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span>sudo mv *.conf /etc/nginx/
 </span></span><span style="display:flex;"><span>sudo ln -sf /etc/nginx/<span style="color:#008080">$NEXT_COLOR</span>.conf /etc/nginx/upstream.conf
 </span></span><span style="display:flex;"><span>sudo nginx -s reload
-</span></span><span style="display:flex;"><span>...
-</span></span></code></pre><p>If we run our ci again and again we should be seeing our color changing from green to blue:</p>
+</span></span></code></pre></li>
+</ol>
+<p>This setup gives us two key benefits:</p>
+<ul>
+<li><strong>Zero Downtime</strong>: The switch is instant and atomic</li>
+<li><strong>Easy Rollback</strong>: We can quickly switch back by changing the symbolic link</li>
+</ul>
+<p>If we run our ci again and again we should be seeing our color changing from green to blue:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#008080">VM_IP</span><span style="color:#000;font-weight:bold">=</span><span style="color:#000;font-weight:bold">$(</span>multipass info bluegreen-demo | grep IPv4 | awk <span style="color:#d14">&#39;{print $2}&#39;</span><span style="color:#000;font-weight:bold">)</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>./scripts/ci.sh
 </span></span><span style="display:flex;"><span>curl -s http://<span style="color:#008080">$VM_IP</span>/status | jq -r .color
 </span></span></code></pre><h3 id="conclusion">Conclusion</h3>
-<p>Using simple scripts and nginx we could create a basic blue/green deployment that would allow us deploy our application to a VPS without down time.</p>
-<p>In the next post we will explore how to perform this deployment using Github Actions as part of a real CI instead of deploying the application from our local machine.</p>
+<p>We've successfully created a simple but effective blue-green deployment system that:</p>
+<ul>
+<li>Enables zero-downtime deployments on a single VPS</li>
+<li>Uses nginx for instant traffic switching</li>
+<li>Keeps the previous version ready for quick rollbacks</li>
+<li>Requires minimal infrastructure</li>
+</ul>
+<p>This approach shows how we can adapt modern deployment practices to a lean, cost-effective setup inspired by <a href="https://x.com/levelsio?lang=en">levelsio</a>'s philosophy. While this example uses Go, the same principles can work with any compiled language.</p>
+<h4 id="next-steps">Next Steps</h4>
+<p>In the upcoming post, we'll take this solution further by:</p>
+<ul>
+<li>Integrating it with GitHub Actions for automated deployments</li>
+<li>Adding Cloudflare on top of our server to minimize the amount of traffic and process the app has to perform</li>
+</ul>
+<p>Stay tuned to see how we can make this simple setup even more robust!</p>
 
   </article>
   <div>
