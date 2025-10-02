@@ -115,7 +115,23 @@
 <h3 id="function-call-cascading">Function call cascading</h3>
 <p>One way of implementing this functionality is using function call cascading.<br />
 We can visualize it as a sequence:</p>
-<pre><code class="language-mermaid">
+<div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(h:300,w:800)
+
+registerUser
+validateUser
+createUser
+sendConfirmationEmail
+logRegistration
+
+
+registerUser(x:0,y:0)
+validateUser(x:50,y:50)
+createUser(x:100,y:100)
+sendConfirmationEmail(x:150,y:150)
+logRegistration(x:200,y:200)
+
+registerUser.s --&gt; validateUser.w
+</code></pre><pre><code class="language-mermaid">
   sequenceDiagram
 
   actor Client
