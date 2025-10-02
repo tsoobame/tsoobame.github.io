@@ -178,7 +178,7 @@ of functions. (I had some troubles naming this style. Let me know if there are b
 <p>Another way to implement the same functionality is to use a recipe-like sequence of functions<br />
 to be executed.</p>
 <p>As a sequence it would look like:</p>
-<pre><code class="language-mermaid">@layout(h:300,w:800)
+<div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(h:300,w:800)
 
 registerUser
 validateUser@fn
@@ -199,8 +199,7 @@ registerUser.ws --&gt; validateUser.n
 registerUser.sw --&gt; createUser.n
 registerUser.w --&gt; sendConfirmationEmail.n
 registerUser.se --&gt; logRegistration.n
-</code></pre>
-<p>And this is the code:</p>
+</code></pre><p>And this is the code:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">function</span> registerUser(userData) {
 </span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">if</span> (validateUser(userData)) {
 </span></span><span style="display:flex;"><span>    createUser(userData)
