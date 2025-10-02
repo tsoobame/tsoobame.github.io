@@ -187,18 +187,18 @@ sendConfirmationEmail@fn
 logRegistration@fn
 
 
-@fn(h:30,w:300)
+@fn(h:30,w:300,x=150)
 
-@registerUser(x:0,y:0,h:30, w:800)
-@validateUser(x:100,y:50)
-@createUser(x:200,y:100)
-@sendConfirmationEmail(x:300,y:150)
-@logRegistration(x:400,y:200)
+@registerUser(x:0,y:0,h:300, w:30)
+@validateUser(y:50)
+@createUser(y:100)
+@sendConfirmationEmail(y:150)
+@logRegistration(y:200)
 
-registerUser.ws --&gt; validateUser.n
-registerUser.sw --&gt; createUser.n
-registerUser.w --&gt; sendConfirmationEmail.n
-registerUser.se --&gt; logRegistration.n
+registerUser.en --&gt; validateUser.w
+registerUser.e --&gt; createUser.w
+registerUser.es --&gt; sendConfirmationEmail.w
+registerUser.se --&gt; logRegistration.w
 </code></pre><p>And this is the code:</p>
 <pre tabindex="0" style="background-color:#fff;"><code><span style="display:flex;"><span><span style="color:#000;font-weight:bold">function</span> registerUser(userData) {
 </span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">if</span> (validateUser(userData)) {
