@@ -153,26 +153,155 @@ I am not responsible for any issues caused in production systems due to followin
 <p>I assume knowledge of Go and HTTP servers and basic knowledge about nginx (at least that it exists and what it does).</p>
 <p>Let's start!</p>
 <h2 id="block-1-configure-the-vm-with-nginx-and-the-simple-golang-server">Block 1: Configure the VM with nginx and the simple golang server</h2>
-<div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(w:800,h:300)
+<svg width="800" height="300" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background -->
+        <rect width="800" height="300" fill="#ffffff"/>
+        
+        
+<g transform="translate(50.000000,25.000000)">
+    <g class="ns" filter="url(#softShadow)">
+            <rect x="0" y="0" width="250.000000" height="200.000000" rx="3.906250" fill="#e6f3ff" stroke="#666"/>
+            <rect x="0" y="0" width="250.000000" height="20.952380" rx="3.906250" ry="3.906250" fill="#e6f3ff" stroke="#666"/>
+            <rect x="39.062500" y="4.761900" width="187.500000" height="11.428560" rx="2.343750" fill="#fff" stroke="#666" opacity="0.85"/>
+            <rect x="4.687500" y="26.666660" width="240.625000" height="167.619040" rx="2.343750" fill="#ffffff" stroke="#666" opacity="0.9"/>
+    </g>
+    <text x="132.812500" y="10.476180" text-anchor="middle" dominant-baseline="middle"
+            font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+            font-size="10.000000" fill="#666">http://multipass/home</text>
+    <text x="125.000000" y="110.476180" text-anchor="middle" dominant-baseline="middle"
+            font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+            font-size="25" fill="#666">Home Page</text>
+    
+<g transform="translate(5.468750,6.666660)">
+        <circle r="2.343750" cx="0" cy="3.117188" fill="#ff5f57"/>
+        <circle r="2.343750" cx="7.031250" cy="3.117188" fill="#febc2e"/>
+        <circle r="2.343750" cx="14.062500" cy="3.117188" fill="#28c840"/>
+</g>
 
-browser:Browser@home
-vps:VM@ubuntu {
-    nginx:Server@nginx
-    app:Server@app
-}
 
-browser.e --&gt; nginx.w
-nginx.e --&gt; app.w
+</g>
 
-@browser(x:50,y:25,w:250,h:200)
-@home(url: &quot;http://multipass/home&quot;, bg: &quot;#e6f3ff&quot;, fg: &quot;#666&quot;, text: &quot;Home Page&quot;)
+<g transform="translate(350.000000,25.000000)">
+        <g class="ns" filter="url(#softShadow)">
+                <rect x="0" y="0" width="400.000000" height="200.000000" rx="6.250000" fill="#666" stroke="#eee"/>
+                <rect x="0" y="0" width="400.000000" height="20.952380" rx="6.250000" ry="6.250000" fill="#666" stroke="#eee"/>
+                <rect x="7.500000" y="26.666660" width="385.000000" height="167.619040" rx="3.750000" fill="#f0f8ff" stroke="#eee" opacity="0.9"/>
+        </g>    
+        
+        
+        <text x="62.500000" 
+                y="10.761900" 
+                text-anchor="start" 
+                dominant-baseline="middle"
+                font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+                font-size="14.000000000000002" 
+                fill="#eee">ubuntu@multipass</text>
+        
+<g transform="translate(8.750000,6.666660)">
+        <circle r="3.750000" cx="0" cy="4.987500" fill="#ff5f57"/>
+        <circle r="3.750000" cx="11.250000" cy="4.987500" fill="#febc2e"/>
+        <circle r="3.750000" cx="22.500000" cy="4.987500" fill="#28c840"/>
+</g>
 
-@vps(x:350,y:&amp;browser.c,w:400,h:200)
-@ubuntu(title: &quot;ubuntu@multipass&quot;, bg: &quot;#666&quot;, fg: &quot;#eee&quot;, text: &quot;Ubuntu&quot;, contentBg: &quot;#f0f8ff&quot;)
 
-@nginx(x:20,y:&amp;browser.c,w:150,h:40, title: &quot;nginx&quot;, icon: &quot;nginx&quot;, port: 80, bg: &quot;#f0f8ff&quot;, fg: &quot;#333&quot;)
-@app(x:200,y:&amp;browser.c,w:150,h:40, title: &quot;app&quot;, icon: &quot;golang&quot;, port: 8081, bg: &quot;#f0f8ff&quot;, fg: &quot;#333&quot;)
-</code></pre><h3 id="creating-our-simple-go-server">Creating our simple Go server</h3>
+        <g transform="translate(7.500000,26.666660)" class="vm-content">
+<g transform="translate(20.000000,53.333340)">
+    
+    <rect x="0" y="0" width="150.000000" height="40.000000"
+          rx="4.000000" ry="4.000000"
+          fill="#f0f8ff" stroke="#333" stroke-width="2"/>
+
+    
+    
+    
+    <g transform="translate(6.000000,6.000000)">
+        
+        
+        <rect x="0" y="0" width="28.000000" height="28.000000" fill="#009639"/>
+        <text x="14.000000" y="19.600000"
+              fill="#ffffff" font-family="Arial" font-size="16.800000"
+              text-anchor="middle">N</text>
+        
+    </g>
+
+    
+    <text x="46.000000"
+          y="24.000000"
+          fill="#333"
+          font-family="Arial"
+          font-size="16.000000"
+          >nginx</text>
+
+    
+    <text x="144.000000"
+          y="24.000000"
+          fill="#333"
+          font-family="Arial"
+          font-size="14.000000"
+          text-anchor="end">:80</text>
+</g>
+
+<g transform="translate(200.000000,53.333340)">
+    
+    <rect x="0" y="0" width="150.000000" height="40.000000"
+          rx="4.000000" ry="4.000000"
+          fill="#f0f8ff" stroke="#333" stroke-width="2"/>
+
+    
+    
+    
+    <g transform="translate(6.000000,6.000000)">
+        
+        
+        <rect x="0" y="0" width="28.000000" height="28.000000" fill="#00ADD8"/>
+        <text x="14.000000" y="19.600000"
+              fill="#ffffff" font-family="Arial" font-size="16.800000"
+              text-anchor="middle">Go</text>
+        
+    </g>
+
+    
+    <text x="46.000000"
+          y="24.000000"
+          fill="#333"
+          font-family="Arial"
+          font-size="16.000000"
+          >app</text>
+
+    
+    <text x="144.000000"
+          y="24.000000"
+          fill="#333"
+          font-family="Arial"
+          font-size="14.000000"
+          text-anchor="end">:8081</text>
+</g>
+</g>
+</g>
+
+<g class="connector">
+    <defs>
+        <marker id="arrowhead-5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f2937"/>
+        </marker>
+    </defs>
+    <polyline
+        points="300.00,125.00 377.50,125.00" stroke="#1f2937" stroke-width="2.00" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowhead-5)"
+    />
+</g>
+
+<g class="connector">
+    <defs>
+        <marker id="arrowhead-6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f2937"/>
+        </marker>
+    </defs>
+    <polyline
+        points="527.50,125.00 557.50,125.00" stroke="#1f2937" stroke-width="2.00" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowhead-6)"
+    />
+</g>
+
+</svg><h3 id="creating-our-simple-go-server">Creating our simple Go server</h3>
 <p>Let's first initialize our Go project with <code>go mod init bluegreen-demo</code></p>
 <p>The official way to initialize a Go module is using a git repo, but for our use case we are using this simple name.<br />
 Let's create our server:</p>
@@ -361,56 +490,376 @@ We can pass the port it has to listen to via cli args.</p>
 <li>Switch traffic to the new version once it's ready</li>
 </ul>
 <p>Here's how it works:</p>
-<div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(w:800,h:300)
+<svg width="800" height="300" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background -->
+        <rect width="800" height="300" fill="#ffffff"/>
+        
+        
+<g transform="translate(50.000000,10.000000)">
+    <g class="ns" filter="url(#softShadow)">
+            <rect x="0" y="0" width="250.000000" height="200.000000" rx="3.906250" fill="#e6f3ff" stroke="rgb(0, 119, 194)"/>
+            <rect x="0" y="0" width="250.000000" height="20.952380" rx="3.906250" ry="3.906250" fill="#e6f3ff" stroke="rgb(0, 119, 194)"/>
+            <rect x="39.062500" y="4.761900" width="187.500000" height="11.428560" rx="2.343750" fill="#fff" stroke="rgb(0, 119, 194)" opacity="0.85"/>
+            <rect x="4.687500" y="26.666660" width="240.625000" height="167.619040" rx="2.343750" fill="#ffffff" stroke="rgb(0, 119, 194)" opacity="0.9"/>
+    </g>
+    <text x="132.812500" y="10.476180" text-anchor="middle" dominant-baseline="middle"
+            font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+            font-size="10.000000" fill="rgb(0, 119, 194)">http://multipass/home</text>
+    <text x="125.000000" y="110.476180" text-anchor="middle" dominant-baseline="middle"
+            font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+            font-size="25" fill="rgb(0, 119, 194)">Blue</text>
+    
+<g transform="translate(5.468750,6.666660)">
+        <circle r="2.343750" cx="0" cy="3.117188" fill="#ff5f57"/>
+        <circle r="2.343750" cx="7.031250" cy="3.117188" fill="#febc2e"/>
+        <circle r="2.343750" cx="14.062500" cy="3.117188" fill="#28c840"/>
+</g>
 
-browser:Browser@home
-vps:VM@ubuntu {
-    nginx:Server@nginx
-    blue:Server@app
-    green:Server@app
-}
 
-browser.e --&gt; nginx.w
-nginx.e --&gt; blue.w
+</g>
 
-@browser(x:50,y:10,w:250,h:200)
-@home(url: &quot;http://multipass/home&quot;, bg: &quot;#e6f3ff&quot;, fg: &quot;rgb(0, 119, 194)&quot;, text: &quot;Blue&quot;)
+<g transform="translate(350.000000,10.000000)">
+        <g class="ns" filter="url(#softShadow)">
+                <rect x="0" y="0" width="400.000000" height="200.000000" rx="6.250000" fill="#666" stroke="#eee"/>
+                <rect x="0" y="0" width="400.000000" height="20.952380" rx="6.250000" ry="6.250000" fill="#666" stroke="#eee"/>
+                <rect x="7.500000" y="26.666660" width="385.000000" height="167.619040" rx="3.750000" fill="#f0f8ff" stroke="#eee" opacity="0.9"/>
+        </g>    
+        
+        
+        <text x="62.500000" 
+                y="10.761900" 
+                text-anchor="start" 
+                dominant-baseline="middle"
+                font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+                font-size="14.000000000000002" 
+                fill="#eee">ubuntu@multipass</text>
+        
+<g transform="translate(8.750000,6.666660)">
+        <circle r="3.750000" cx="0" cy="4.987500" fill="#ff5f57"/>
+        <circle r="3.750000" cx="11.250000" cy="4.987500" fill="#febc2e"/>
+        <circle r="3.750000" cx="22.500000" cy="4.987500" fill="#28c840"/>
+</g>
 
-@vps(x:350,y:&amp;browser.c,w:400,h:200)
-@ubuntu(title: &quot;ubuntu@multipass&quot;, bg: &quot;#666&quot;, fg: &quot;#eee&quot;, text: &quot;Ubuntu&quot;, contentBg: &quot;#f0f8ff&quot;)
 
-@nginx(x:20,y:&amp;browser.c,w:150,h:40, title: &quot;nginx&quot;, icon: &quot;nginx&quot;, port: 80, bg: &quot;#f0f8ff&quot;, fg: &quot;#333&quot;)
-@app(x:200,w:150,h:40,icon: &quot;golang&quot;)
+        <g transform="translate(7.500000,26.666660)" class="vm-content">
+<g transform="translate(20.000000,53.333340)">
+    
+    <rect x="0" y="0" width="150.000000" height="40.000000"
+          rx="4.000000" ry="4.000000"
+          fill="#f0f8ff" stroke="#333" stroke-width="2"/>
 
-@blue(y:&amp;nginx.c,title: &quot;blue&quot;,  port: 8081, bg: &quot;rgb(0, 119, 194)&quot;, fg: &quot;#fff&quot;)
-@green(y:120,title: &quot;green&quot;, port: 8082, bg: &quot;rgb(0, 118, 108)&quot;, fg: &quot;#fff&quot;)
+    
+    
+    
+    <g transform="translate(6.000000,6.000000)">
+        
+        
+        <rect x="0" y="0" width="28.000000" height="28.000000" fill="#009639"/>
+        <text x="14.000000" y="19.600000"
+              fill="#ffffff" font-family="Arial" font-size="16.800000"
+              text-anchor="middle">N</text>
+        
+    </g>
 
-</code></pre><p>And after deploying and switching:</p>
-<div class="nagare-error"><p><strong>Error processing nagare block:</strong> failed to call nagare service: Post &quot;http://localhost:8080/render&quot;: dial tcp [::1]:8080: connect: connection refused</p></div><pre><code class="language-nagare">@layout(w:800,h:300)
+    
+    <text x="46.000000"
+          y="24.000000"
+          fill="#333"
+          font-family="Arial"
+          font-size="16.000000"
+          >nginx</text>
 
-browser:Browser@home
-vps:VM@ubuntu {
-    nginx:Server@nginx
-    blue:Server@app
-    green:Server@app
-}
+    
+    <text x="144.000000"
+          y="24.000000"
+          fill="#333"
+          font-family="Arial"
+          font-size="14.000000"
+          text-anchor="end">:80</text>
+</g>
 
-browser.e --&gt; nginx.w
-nginx.e --&gt; green.w
+<g transform="translate(200.000000,-10.000000)">
+    
+    <rect x="0" y="0" width="150.000000" height="40.000000"
+          rx="4.000000" ry="4.000000"
+          fill="rgb(0, 119, 194)" stroke="#fff" stroke-width="2"/>
 
-@browser(x:50,y:10,w:250,h:200)
-@home(url: &quot;http://multipass/home&quot;, bg: &quot;#e6f3ff&quot;, fg: &quot;rgb(0, 118, 108)&quot;, text: &quot;Green&quot;)
+    
+    
+    
+    <g transform="translate(6.000000,6.000000)">
+        
+        
+        <rect x="0" y="0" width="28.000000" height="28.000000" fill="#00ADD8"/>
+        <text x="14.000000" y="19.600000"
+              fill="#ffffff" font-family="Arial" font-size="16.800000"
+              text-anchor="middle">Go</text>
+        
+    </g>
 
-@vps(x:350,y:&amp;browser.c,w:400,h:200)
-@ubuntu(title: &quot;ubuntu@multipass&quot;, bg: &quot;#666&quot;, fg: &quot;#eee&quot;, text: &quot;Ubuntu&quot;, contentBg: &quot;#f0f8ff&quot;)
+    
+    <text x="46.000000"
+          y="24.000000"
+          fill="#fff"
+          font-family="Arial"
+          font-size="16.000000"
+          >blue</text>
 
-@nginx(x:20,y:&amp;browser.c,w:150,h:40, title: &quot;nginx&quot;, icon: &quot;nginx&quot;, port: 80, bg: &quot;#f0f8ff&quot;, fg: &quot;#333&quot;)
-@app(x:200,w:150,h:40,icon: &quot;golang&quot;)
+    
+    <text x="144.000000"
+          y="24.000000"
+          fill="#fff"
+          font-family="Arial"
+          font-size="14.000000"
+          text-anchor="end">:8081</text>
+</g>
 
-@blue(y:120,title: &quot;blue&quot;,  port: 8081, bg: &quot;rgb(0, 119, 194)&quot;, fg: &quot;#fff&quot;)
-@green(y:&amp;nginx.c,title: &quot;green&quot;, port: 8082, bg: &quot;rgb(0, 118, 108)&quot;, fg: &quot;#fff&quot;)
+<g transform="translate(200.000000,110.000000)">
+    
+    <rect x="0" y="0" width="150.000000" height="40.000000"
+          rx="4.000000" ry="4.000000"
+          fill="rgb(0, 118, 108)" stroke="#fff" stroke-width="2"/>
 
-</code></pre><h3 id="adding-color-support-to-our-server">Adding Color Support to Our Server</h3>
+    
+    
+    
+    <g transform="translate(6.000000,6.000000)">
+        
+        
+        <rect x="0" y="0" width="28.000000" height="28.000000" fill="#00ADD8"/>
+        <text x="14.000000" y="19.600000"
+              fill="#ffffff" font-family="Arial" font-size="16.800000"
+              text-anchor="middle">Go</text>
+        
+    </g>
+
+    
+    <text x="46.000000"
+          y="24.000000"
+          fill="#fff"
+          font-family="Arial"
+          font-size="16.000000"
+          >green</text>
+
+    
+    <text x="144.000000"
+          y="24.000000"
+          fill="#fff"
+          font-family="Arial"
+          font-size="14.000000"
+          text-anchor="end">:8082</text>
+</g>
+</g>
+</g>
+
+<g class="connector">
+    <defs>
+        <marker id="arrowhead-17" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f2937"/>
+        </marker>
+    </defs>
+    <polyline
+        points="300.00,110.00 377.50,110.00" stroke="#1f2937" stroke-width="2.00" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowhead-17)"
+    />
+</g>
+
+<g class="connector">
+    <defs>
+        <marker id="arrowhead-18" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f2937"/>
+        </marker>
+    </defs>
+    <polyline
+        points="527.50,110.00 551.50,110.00 551.50,46.67 557.50,46.67" stroke="#1f2937" stroke-width="2.00" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowhead-18)"
+    />
+</g>
+
+</svg><p>And after deploying and switching:</p>
+<svg width="800" height="300" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background -->
+        <rect width="800" height="300" fill="#ffffff"/>
+        
+        
+<g transform="translate(50.000000,10.000000)">
+    <g class="ns" filter="url(#softShadow)">
+            <rect x="0" y="0" width="250.000000" height="200.000000" rx="3.906250" fill="#e6f3ff" stroke="rgb(0, 118, 108)"/>
+            <rect x="0" y="0" width="250.000000" height="20.952380" rx="3.906250" ry="3.906250" fill="#e6f3ff" stroke="rgb(0, 118, 108)"/>
+            <rect x="39.062500" y="4.761900" width="187.500000" height="11.428560" rx="2.343750" fill="#fff" stroke="rgb(0, 118, 108)" opacity="0.85"/>
+            <rect x="4.687500" y="26.666660" width="240.625000" height="167.619040" rx="2.343750" fill="#ffffff" stroke="rgb(0, 118, 108)" opacity="0.9"/>
+    </g>
+    <text x="132.812500" y="10.476180" text-anchor="middle" dominant-baseline="middle"
+            font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+            font-size="10.000000" fill="rgb(0, 118, 108)">http://multipass/home</text>
+    <text x="125.000000" y="110.476180" text-anchor="middle" dominant-baseline="middle"
+            font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+            font-size="25" fill="rgb(0, 118, 108)">Green</text>
+    
+<g transform="translate(5.468750,6.666660)">
+        <circle r="2.343750" cx="0" cy="3.117188" fill="#ff5f57"/>
+        <circle r="2.343750" cx="7.031250" cy="3.117188" fill="#febc2e"/>
+        <circle r="2.343750" cx="14.062500" cy="3.117188" fill="#28c840"/>
+</g>
+
+
+</g>
+
+<g transform="translate(350.000000,10.000000)">
+        <g class="ns" filter="url(#softShadow)">
+                <rect x="0" y="0" width="400.000000" height="200.000000" rx="6.250000" fill="#666" stroke="#eee"/>
+                <rect x="0" y="0" width="400.000000" height="20.952380" rx="6.250000" ry="6.250000" fill="#666" stroke="#eee"/>
+                <rect x="7.500000" y="26.666660" width="385.000000" height="167.619040" rx="3.750000" fill="#f0f8ff" stroke="#eee" opacity="0.9"/>
+        </g>    
+        
+        
+        <text x="62.500000" 
+                y="10.761900" 
+                text-anchor="start" 
+                dominant-baseline="middle"
+                font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+                font-size="14.000000000000002" 
+                fill="#eee">ubuntu@multipass</text>
+        
+<g transform="translate(8.750000,6.666660)">
+        <circle r="3.750000" cx="0" cy="4.987500" fill="#ff5f57"/>
+        <circle r="3.750000" cx="11.250000" cy="4.987500" fill="#febc2e"/>
+        <circle r="3.750000" cx="22.500000" cy="4.987500" fill="#28c840"/>
+</g>
+
+
+        <g transform="translate(7.500000,26.666660)" class="vm-content">
+<g transform="translate(20.000000,53.333340)">
+    
+    <rect x="0" y="0" width="150.000000" height="40.000000"
+          rx="4.000000" ry="4.000000"
+          fill="#f0f8ff" stroke="#333" stroke-width="2"/>
+
+    
+    
+    
+    <g transform="translate(6.000000,6.000000)">
+        
+        
+        <rect x="0" y="0" width="28.000000" height="28.000000" fill="#009639"/>
+        <text x="14.000000" y="19.600000"
+              fill="#ffffff" font-family="Arial" font-size="16.800000"
+              text-anchor="middle">N</text>
+        
+    </g>
+
+    
+    <text x="46.000000"
+          y="24.000000"
+          fill="#333"
+          font-family="Arial"
+          font-size="16.000000"
+          >nginx</text>
+
+    
+    <text x="144.000000"
+          y="24.000000"
+          fill="#333"
+          font-family="Arial"
+          font-size="14.000000"
+          text-anchor="end">:80</text>
+</g>
+
+<g transform="translate(200.000000,110.000000)">
+    
+    <rect x="0" y="0" width="150.000000" height="40.000000"
+          rx="4.000000" ry="4.000000"
+          fill="rgb(0, 119, 194)" stroke="#fff" stroke-width="2"/>
+
+    
+    
+    
+    <g transform="translate(6.000000,6.000000)">
+        
+        
+        <rect x="0" y="0" width="28.000000" height="28.000000" fill="#00ADD8"/>
+        <text x="14.000000" y="19.600000"
+              fill="#ffffff" font-family="Arial" font-size="16.800000"
+              text-anchor="middle">Go</text>
+        
+    </g>
+
+    
+    <text x="46.000000"
+          y="24.000000"
+          fill="#fff"
+          font-family="Arial"
+          font-size="16.000000"
+          >blue</text>
+
+    
+    <text x="144.000000"
+          y="24.000000"
+          fill="#fff"
+          font-family="Arial"
+          font-size="14.000000"
+          text-anchor="end">:8081</text>
+</g>
+
+<g transform="translate(200.000000,53.333340)">
+    
+    <rect x="0" y="0" width="150.000000" height="40.000000"
+          rx="4.000000" ry="4.000000"
+          fill="rgb(0, 118, 108)" stroke="#fff" stroke-width="2"/>
+
+    
+    
+    
+    <g transform="translate(6.000000,6.000000)">
+        
+        
+        <rect x="0" y="0" width="28.000000" height="28.000000" fill="#00ADD8"/>
+        <text x="14.000000" y="19.600000"
+              fill="#ffffff" font-family="Arial" font-size="16.800000"
+              text-anchor="middle">Go</text>
+        
+    </g>
+
+    
+    <text x="46.000000"
+          y="24.000000"
+          fill="#fff"
+          font-family="Arial"
+          font-size="16.000000"
+          >green</text>
+
+    
+    <text x="144.000000"
+          y="24.000000"
+          fill="#fff"
+          font-family="Arial"
+          font-size="14.000000"
+          text-anchor="end">:8082</text>
+</g>
+</g>
+</g>
+
+<g class="connector">
+    <defs>
+        <marker id="arrowhead-25" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f2937"/>
+        </marker>
+    </defs>
+    <polyline
+        points="300.00,110.00 377.50,110.00" stroke="#1f2937" stroke-width="2.00" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowhead-25)"
+    />
+</g>
+
+<g class="connector">
+    <defs>
+        <marker id="arrowhead-26" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f2937"/>
+        </marker>
+    </defs>
+    <polyline
+        points="527.50,110.00 557.50,110.00" stroke="#1f2937" stroke-width="2.00" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowhead-26)"
+    />
+</g>
+
+</svg><h3 id="adding-color-support-to-our-server">Adding Color Support to Our Server</h3>
 <p>First, let's enhance our Go server to identify which version (blue or green) it is:</p>
 <ul>
 <li>Add a <code>--color</code> flag to identify blue/green instances</li>
