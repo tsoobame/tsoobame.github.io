@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Procedural Neon Feline • p5.js + TypeScript Prototype</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+    <style>
+        body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { image-rendering: pixelated; box-shadow: 0 0 40px rgba(0, 255, 200, 0.3); }
+    </style>
+</head>
+<body>
+<script>
+// =============================================
+// Procedural Neon Feline – Full TypeScript + p5.js Prototype
+// Based directly on the attached image (side-view leaping cyber-feline with cyan neon glow)
+// Everything is 100% code: skeleton, body shape, animation, glow. No external assets, no 3D, no animation software.
+//
+// How it works:
+// 1. Skeleton = hierarchical forward-kinematics (FK) with a spine curve + joint angles.
+// 2. Animation = pure math (sine waves + phase offsets) for a galloping/leaping gait cycle.
+// 3. Body = dynamic bezier silhouette (dark fill + white outline) that follows a flexible spine.
+// 4. Neon glow = p5 drawingContext.shadowBlur + layered cyan strokes (exact look of the image).
+// 5. Tail = FK chain with wave propagation.
+// 6. Legs = 2-bone FK segments (thigh + shin) with phase-shifted sine for natural stride.
+// 7. Head/ears/eye = procedural shapes that bob with the spine.
+//
+// Run this file directly in a browser. Tweak the constants at the top of the Cat class to change speed, stride, glow intensity, etc.
+// =============================================
+
+const sketch = (p: p5) => {
+    let feline: Cat;
+
+    p.setup = () => {
+        p.createCanvas(1200, 700);
+        feline = new Cat(p.width * 0.25, p.height * 0.65);
+    };
+
+    p.draw = () => {
+        // Simple procedural forest background (matches image atmosphere)
+        p.background(15, 35, 25);
+        // distant light rays
+        p.drawingContext.shadowBlur = 60;
+        p.drawingContext.shadowColor = '#0ff';
+        for (let i = 0; i < 8; i++) {
+            const x = 200 + i * 120;
+            p.stroke(180, 255, 200, 15);
+            p.strokeWeight(4);
+            p.line(x, 0, x - 80, p.height);
+        }
+        p.drawingContext.shadowBlur = 0;
+
+        // ground
+        p.fill(20, 55, 30);
+        p.noStroke();
+        p.rect(0, p.height * 0.78, p.width, p.height);
+
+        // mushrooms (foreground detail)
+        drawMushroom(p, 150, p.height * 0.85, 35, '#f80');
+        drawMushroom(p, 920, p.height * 0.82, 28, '#0bb');
+        drawMushroom(p, 1050, p.height * 0.88, 22, '#f80');
+        drawMushroom(p, 400, p.height * 0.90, 18, '#0bb');
+
+        // vines / hanging roots
+        p.stroke(40, 80, 30);
+        p.strokeWeight(6);
+        for (let i = 0; i < 12; i++) {
+            const x = 80 + i * 85;
+            p.bezier(x, 0, x + 20, 120, x - 30, 250, x + 15, p.height * 0.75);
+        }
+
+        feline.update();
+        feline.display(p);
+    };
+
+    // tiny helper for mushrooms
+    function drawMushroom(p: p5, x: number, y: number, size: number, capColor: string) {
+        p.push();
+        p.translate(x, y);
+        // stem
+        p.stroke(60, 40, 20);
+        p.strokeWeight(8);
+        p.line(0, 0, 0, -size * 1.8);
+        // cap
+        p.fill(capColor);
+        p.stroke(255, 80);
+        p.strokeWeight(4);
+        p.ellipse(0, -size * 1.8, size * 2.2, size * 1.4);
+        p.fill(30, 20, 10);
+        p.ellipse(0, -size * 1.8 + 4, size * 1.6, size);
+        p.pop();
+    }
+
+    class Cat {
+        // ============== TUNABLE PARAMETERS (play with these!) ==============
+        private readonly BODY_LENGTH = 260;
+        private readonly BODY_WIDTH = 68;
+        private readonly TAIL_SEGMENTS = 11;
+        private readonly TAIL_LENGTH = 240;
+        private readonly LEG_LENGTH_THIGH = 88;
+        private readonly LEG_LENGTH_SHIN = 72;
+        private readonly RUN_SPEED = 4.2;           // pixels per frame
+        private readonly GAIT_SPEED = 8.5;          // how fast legs cycle
+        private readonly GLOW_INTENSITY = 28;       // higher = brighter neon
+
+        // internal state
+        public pos: p5.Vector;
+        private animTime = 0;
+        private velocity = 0;
+
+        // skeleton joints (angles in radians)
+        private bodyAngle = -0.12;                  // slight forward lean
+        private headAngle = 0.18;
+        private spineBend = 0;                      // dynamic arch for gallop
+
+        // tail (FK chain of relative angles)
+        private tailAngles: number[] = [];
+
+        // leg angles (front & hind, each has thigh + shin)
+        private hindThighAngle = 0;
+        private hindShinAngle = 0;
+        private frontThighAngle = 0;
+        private frontShinAngle = 0;
+
+        // attachment points relative to body center (in body space)
+        private pelvisOffset = { x: -110, y: 18 };
+        private shoulderOffset = { x: 95, y: -12 };
+        private headOffset = { x: 125, y: -38 };
+
+        constructor(x: number, y: number) {
+            this.pos = p.createVector(x, y);
+            // init tail with zero angles
+            for (let i = 0; i < this.TAIL_SEGMENTS; i++) this.tailAngles.push(0);
+        }
+
+        update() {
+            this.animTime += 0.016; // \~60fps timing
+
+            // move forward
+            this.velocity = this.RUN_SPEED;
+            this.pos.x += this.velocity;
+
+            // reset when off-screen (looping demo)
+            if (this.pos.x > p.width + 400) this.pos.x = -400;
+
+            // procedural gait cycle
+            const cycle = Math.sin(this.animTime * this.GAIT_SPEED);
+
+            // spine arch (galloping wave)
+            this.spineBend = Math.sin(this.animTime * this.GAIT_SPEED * 1.3) * 0.22;
+
+            // body tilt bobs with stride
+            this.bodyAngle = -0.12 + Math.sin(this.animTime * this.GAIT_SPEED * 0.8) * 0.09;
+
+            // head follows spine with slight lag
+            this.headAngle = 0.18 - this.spineBend * 0.6 + Math.sin(this.animTime * 4) * 0.05;
+
+            // Tail – wave propagation (very organic feel)
+            for (let i = 0; i < this.TAIL_SEGMENTS; i++) {
+                this.tailAngles[i] = Math.sin(this.animTime * 6 + i * 1.1) * 0.45 - this.spineBend * 0.3;
+            }
+
+            // Legs – phase-shifted sine for natural quadruped leap/run
+            // Hind leg (rear)
+            const hindPhase = cycle;
+            this.hindThighAngle = -1.1 + hindPhase * 1.6;           // big extension
+            this.hindShinAngle = 1.4 - Math.abs(hindPhase) * 1.1;   // knee bends naturally
+
+            // Front leg (lead leg in leap)
+            const frontPhase = Math.sin(this.animTime * this.GAIT_SPEED + Math.PI * 0.75);
+            this.frontThighAngle = -0.6 + frontPhase * 1.8;
+            this.frontShinAngle = 0.9 - Math.abs(frontPhase) * 0.9;
+        }
+
+        display(p: p5) {
+            p.push();
+            p.translate(this.pos.x, this.pos.y);
+            p.rotate(this.bodyAngle);
+
+            // ====================== DRAW BODY (silhouette + neon spine) ======================
+            this.drawBodySilhouette(p);
+
+            // ====================== DRAW SKELETON (optional debug – set to true) ======================
+            const showSkeleton = false; // change to true to see bones
+            if (showSkeleton) this.drawSkeleton(p);
+
+            // ====================== DRAW TAIL ======================
+            this.drawTail(p);
+
+            // ====================== DRAW HIND LEG ======================
+            this.drawLeg(p, this.pelvisOffset.x, this.pelvisOffset.y, this.hindThighAngle, this.hindShinAngle, true);
+
+            // ====================== DRAW FRONT LEG ======================
+            this.drawLeg(p, this.shoulderOffset.x, this.shoulderOffset.y, this.frontThighAngle, this.frontShinAngle, false);
+
+            // ====================== DRAW HEAD ======================
+            this.drawHead(p);
+
+            p.pop();
+        }
+
+        private drawBodySilhouette(p: p5) {
+            // Dynamic spine points (centerline) – this is the procedural "skeleton spine"
+            const spine: p5.Vector[] = [];
+            const steps = 8;
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const x = p.lerp(-this.BODY_LENGTH * 0.52, this.BODY_LENGTH * 0.48, t);
+                const y = Math.sin(t * Math.PI) * this.spineBend * 22; // arch
+                spine.push(p.createVector(x, y));
+            }
+
+            // Create parallel offset points for upper & lower body contour (gives volume)
+            const upper: p5.Vector[] = [];
+            const lower: p5.Vector[] = [];
+            const halfWidth = this.BODY_WIDTH * 0.5;
+            for (let i = 0; i < spine.length; i++) {
+                const prev = i > 0 ? spine[i - 1] : spine[0];
+                const next = i < spine.length - 1 ? spine[i + 1] : spine[spine.length - 1];
+                const dx = next.x - prev.x;
+                const dy = next.y - prev.y;
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                const nx = -dy / len; // perpendicular
+                const ny = dx / len;
+
+                const w = halfWidth * (1 - Math.pow(Math.abs(i / steps - 0.5) * 1.6, 2)); // taper at ends
+                upper.push(p.createVector(spine[i].x + nx * w, spine[i].y + ny * w));
+                lower.push(p.createVector(spine[i].x - nx * w, spine[i].y - ny * w));
+            }
+
+            // Filled dark body (matches the black silhouette in the image)
+            p.fill(22, 22, 28);
+            p.stroke(255);
+            p.strokeWeight(14);
+            p.beginShape();
+            // upper contour
+            for (let i = 0; i < upper.length; i++) {
+                if (i === 0) p.curveVertex(upper[i].x - 20, upper[i].y);
+                p.curveVertex(upper[i].x, upper[i].y);
+            }
+            // lower contour (reverse)
+            for (let i = lower.length - 1; i >= 0; i--) {
+                p.curveVertex(lower[i].x, lower[i].y);
+            }
+            p.endShape(p.CLOSE);
+
+            // Neon cyan spine line (the glowing "circuit" line from the image)
+            p.drawingContext.shadowBlur = this.GLOW_INTENSITY;
+            p.drawingContext.shadowColor = '#00ffff';
+            p.stroke(0, 255, 220);
+            p.strokeWeight(9);
+            p.noFill();
+            p.beginShape();
+            for (let i = 0; i < spine.length; i++) {
+                p.curveVertex(spine[i].x, spine[i].y);
+            }
+            p.endShape();
+
+            // Extra bright inner glow line (adds depth)
+            p.strokeWeight(4);
+            p.stroke(180, 255, 255);
+            p.beginShape();
+            for (let i = 0; i < spine.length; i++) p.curveVertex(spine[i].x, spine[i].y);
+            p.endShape();
+
+            p.drawingContext.shadowBlur = 0; // reset
+        }
+
+        private drawTail(p: p5) {
+            p.push();
+            // attach at pelvis
+            p.translate(this.pelvisOffset.x - 20, this.pelvisOffset.y + 12);
+            let currentAngle = -1.6 + this.spineBend * 0.4; // base tail angle
+
+            p.drawingContext.shadowBlur = this.GLOW_INTENSITY * 0.9;
+            p.drawingContext.shadowColor = '#00ffff';
+
+            for (let i = 0; i < this.TAIL_SEGMENTS; i++) {
+                const segLen = this.TAIL_LENGTH / this.TAIL_SEGMENTS;
+                currentAngle += this.tailAngles[i];
+
+                p.strokeWeight(22 - i * 1.4);
+                p.stroke(18, 18, 24); // dark core
+                p.line(0, 0, Math.cos(currentAngle) * segLen, Math.sin(currentAngle) * segLen);
+
+                // neon overlay
+                p.strokeWeight(11 - i * 0.9);
+                p.stroke(0, 255, 210);
+                p.line(0, 0, Math.cos(currentAngle) * segLen, Math.sin(currentAngle) * segLen);
+
+                p.translate(Math.cos(currentAngle) * segLen, Math.sin(currentAngle) * segLen);
+            }
+            p.drawingContext.shadowBlur = 0;
+            p.pop();
+        }
+
+        private drawLeg(p: p5, attachX: number, attachY: number, thighAngle: number, shinAngle: number, isHind: boolean) {
+            p.push();
+            p.translate(attachX, attachY);
+
+            const totalThigh = thighAngle + (isHind ? -0.4 : 0.3); // slight natural offset
+            const kneeX = Math.cos(totalThigh) * this.LEG_LENGTH_THIGH;
+            const kneeY = Math.sin(totalThigh) * this.LEG_LENGTH_THIGH;
+
+            // thigh
+            p.drawingContext.shadowBlur = this.GLOW_INTENSITY * 0.7;
+            p.drawingContext.shadowColor = '#00ffff';
+            p.stroke(18, 18, 24);
+            p.strokeWeight(26);
+            p.line(0, 0, kneeX, kneeY);
+            p.stroke(0, 255, 200);
+            p.strokeWeight(11);
+            p.line(0, 0, kneeX, kneeY);
+
+            // shin
+            const footAngle = totalThigh + shinAngle;
+            const footX = kneeX + Math.cos(footAngle) * this.LEG_LENGTH_SHIN;
+            const footY = kneeY + Math.sin(footAngle) * this.LEG_LENGTH_SHIN;
+
+            p.stroke(18, 18, 24);
+            p.strokeWeight(22);
+            p.line(kneeX, kneeY, footX, footY);
+            p.stroke(0, 255, 200);
+            p.strokeWeight(9);
+            p.line(kneeX, kneeY, footX, footY);
+
+            // paw tip (small highlight)
+            p.fill(255);
+            p.noStroke();
+            p.ellipse(footX, footY, 18, 11);
+            p.drawingContext.shadowBlur = 0;
+            p.pop();
+        }
+
+        private drawHead(p: p5) {
+            p.push();
+            p.translate(this.headOffset.x, this.headOffset.y);
+            p.rotate(this.headAngle);
+
+            // head base (black)
+            p.fill(22, 22, 28);
+            p.stroke(255);
+            p.strokeWeight(12);
+            p.ellipse(0, 0, 92, 72);
+
+            // neon head outline
+            p.drawingContext.shadowBlur = this.GLOW_INTENSITY * 1.1;
+            p.drawingContext.shadowColor = '#00ffff';
+            p.stroke(0, 255, 210);
+            p.strokeWeight(6);
+            p.ellipse(0, 0, 92, 72);
+            p.drawingContext.shadowBlur = 0;
+
+            // ears
+            p.fill(22, 22, 28);
+            p.stroke(255);
+            p.strokeWeight(8);
+            // left ear
+            p.triangle(-34, -34, -18, -58, -4, -32);
+            // right ear
+            p.triangle(4, -32, 18, -58, 34, -34);
+
+            // neon ear edges
+            p.stroke(0, 255, 210);
+            p.strokeWeight(4);
+            p.noFill();
+            p.triangle(-34, -34, -18, -58, -4, -32);
+            p.triangle(4, -32, 18, -58, 34, -34);
+
+            // glowing eye (exact cyan from image)
+            p.fill(0, 255, 220);
+            p.noStroke();
+            p.ellipse(26, -8, 18, 22);
+            p.fill(10, 10, 15);
+            p.ellipse(29, -8, 9, 14); // slit pupil
+
+            // tiny white highlight in eye
+            p.fill(255, 255, 255, 180);
+            p.ellipse(31, -11, 4, 4);
+
+            p.pop();
+        }
+
+        private drawSkeleton(p: p5) {
+            // pelvis to shoulder (spine bone)
+            p.stroke(255, 120, 0);
+            p.strokeWeight(3);
+            p.line(this.pelvisOffset.x, this.pelvisOffset.y, this.shoulderOffset.x, this.shoulderOffset.y);
+
+            // head bone
+            p.line(this.shoulderOffset.x, this.shoulderOffset.y, this.headOffset.x, this.headOffset.y);
+
+            // simple joint dots
+            p.fill(255, 200, 0);
+            p.noStroke();
+            p.circle(this.pelvisOffset.x, this.pelvisOffset.y, 12);
+            p.circle(this.shoulderOffset.x, this.shoulderOffset.y, 12);
+            p.circle(this.headOffset.x, this.headOffset.y, 12);
+        }
+    }
+};
+
+// Launch the sketch
+new p5(sketch);
+</script>
+</body>
+</html>
